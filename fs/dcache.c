@@ -2515,6 +2515,7 @@ static int prepend_path(const struct path *path,
 	bool slash = false;
 	int error = 0;
 
+	br_read_lock(&vfsmount_lock);
 	while (dentry != root->dentry || vfsmnt != root->mnt) {
 		struct dentry * parent;
 
@@ -2552,6 +2553,8 @@ static int prepend_path(const struct path *path,
 	if (!error && !slash)
 		error = prepend(buffer, buflen, "/", 1);
 
+out:
+	br_read_unlock(&vfsmount_lock);
 	return error;
 
 global_root:
