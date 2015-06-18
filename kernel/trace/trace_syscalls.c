@@ -595,8 +595,8 @@ static void perf_syscall_exit(void *ignore, struct pt_regs *regs, long ret)
 	int size;
 
 	syscall_nr = syscall_get_nr(current, regs);
-		if (syscall_nr < 0  || syscall_nr >= NR_syscalls)
-			return;
+	if (syscall_nr < 0 || syscall_nr >= NR_syscalls)
+		return;
 	if (!test_bit(syscall_nr, enabled_perf_exit_syscalls))
 		return;
 
