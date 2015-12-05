@@ -990,6 +990,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	int ret = 0;
+	int last_mode = FB_BLANK_UNBLANK;
 
 	if (!op_enable)
 		return -EPERM;
@@ -1059,6 +1060,11 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		}
 		break;
 	}
+	if ((blank_mode == last_mode) && (blank_mode == FB_BLANK_POWERDOWN)) {
+		pr_info("%s: turn panel off failed, sysmat_writecmd triggered !!!\n",
+			__func__);
+	}
+	last_mode = blank_mode;
 	/* Notify listeners */
 	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
 

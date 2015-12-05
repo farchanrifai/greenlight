@@ -22,10 +22,6 @@
 
 #define MAX_SESSIONS 2
 
-/* wait for at most 2 vsync for lowest refresh rate (24hz) */
-#define KOFF_TIMEOUT msecs_to_jiffies(84)
-
-#define STOP_TIMEOUT(hz) msecs_to_jiffies((1000 / hz) * (VSYNC_EXPIRE_TICK + 2))
 #define ULPS_ENTER_TIME msecs_to_jiffies(100)
 
 struct mdss_mdp_cmd_ctx {
@@ -509,7 +505,7 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 	struct mdss_mdp_cmd_ctx *ctx;
 	struct mdss_panel_data *pdata;
 	unsigned long flags;
-	int rc = 0;
+	int rc = 0, i = 0;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
 	if (!ctx) {
@@ -699,6 +695,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	int need_wait = 0;
 	int ret = 0;
 	int hz;
+	int i = 0, rc = 0;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
 	if (!ctx) {
@@ -720,22 +717,28 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 
 	hz = mdss_panel_get_framerate(&ctl->panel_data->panel_info);
 
-	if (need_wait)
-		if (wait_for_completion_timeout(&ctx->stop_comp,
-					STOP_TIMEOUT(hz))
-		    <= 0) {
-			WARN(1, "stop cmd time out\n");
-
-			if (IS_ERR_OR_NULL(ctl->panel_data)) {
-				pr_err("no panel data\n");
-			} else {
-				pinfo = &ctl->panel_data->panel_info;
-				mdss_mdp_irq_disable
-					(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
+	if (need_wait) {
+		for (i = 0; i < 10; i++) {
+			rc = wait_for_completion_timeout(&ctx->stop_comp,STOP_TIMEOUT);
+			if (rc <= 0) {
+				if (i > 2) {
+					WARN(1, "stop cmd time out\n");
+					if (IS_ERR_OR_NULL(ctl->panel_data)) {
+						pr_err("no panel data\n");
+					} else {
+						pinfo = &ctl->panel_data->panel_info;
+						mdss_mdp_irq_disable
+							(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
 							ctx->pp_num);
-				ctx->rdptr_enabled = 0;
+						ctx->rdptr_enabled = 0;
+					}
+				} else
+					pr_info("i %d stop cmd\n", i);
+			} else {
+				break;
 			}
 		}
+	}
 
 	if (cancel_work_sync(&ctx->clk_work))
 		pr_debug("no pending clk work\n");
