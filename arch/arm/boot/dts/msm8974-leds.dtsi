@@ -159,6 +159,12 @@
 			qcom,max-current = <5>;
 			qcom,row-id = <0>;
 			qcom,row-src-en;
+			qcom,start-idx = <1>;
+			qcom,ramp-step-ms = <120>;
+			qcom,duty-pcts = [00 00 00 00 64
+					64 00 00 00 00];
+			qcom,use-blink;
+			qcom,in-order-command-processing;
 		};
 
 		qcom,kpdbl2 {
@@ -171,6 +177,13 @@
 			qcom,max-current = <5>;
 			qcom,row-id = <1>;
 			qcom,row-src-en;
+                        qcom,start-idx = <1>;
+                        qcom,ramp-step-ms = <120>;
+                        qcom,duty-pcts = [00 00 00 00 64
+                                        64 00 00 00 00];
+                        qcom,use-blink;
+                        qcom,in-order-command-processing;
+
 		};
 
 	};
