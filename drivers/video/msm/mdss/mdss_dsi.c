@@ -62,10 +62,10 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
-	pr_debug("%s: enable=%d\n", __func__, enable);
+	pr_info("%s: enable=%d\n", __func__, enable);
 
-	if (pdata->panel_info.dynamic_switch_pending)
-		return 0;
+//	if (pdata->panel_info.dynamic_switch_pending)
+//		return 0;
 
 	if (enable) {
 		if (!ctrl_pdata->panel_sleepwrmod || poweron_firsttime) {
@@ -706,7 +706,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		ctrl_pdata->dsi_pipe_ready = true;
 		return 0;
 	}
-
+#if 0
 	if (!ctrl_pdata->panel_sleepwrmod || poweron_firsttime) {
 		ret = mdss_dsi_panel_pon(pdata, 1);
 		if (ret) {
@@ -721,6 +721,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 			return ret;
 		}
 	}
+#endif
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
 	if (ret) {
 		pr_err("%s: failed to enable bus clocks. rc=%d\n", __func__,
@@ -1254,7 +1255,8 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		}
 		platform_set_drvdata(pdev, ctrl_pdata);
 	}
-
+	ctrl_pdata->dsi_pipe_ready = false;
+	
 	ctrl_name = of_get_property(pdev->dev.of_node, "label", NULL);
 	if (!ctrl_name)
 		pr_info("%s:%d, DSI Ctrl name not specified\n",

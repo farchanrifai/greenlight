@@ -525,47 +525,49 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 	pr_debug("%s: intf_num=%d ctx=%p koff_cnt=%d\n", __func__,
 			ctl->intf_num, ctx, atomic_read(&ctx->koff_cnt));
 
-	rc = wait_event_timeout(ctx->pp_waitq,
-			atomic_read(&ctx->koff_cnt) == 0,
-			KOFF_TIMEOUT);
+	for (i = 0; i < 10; i++) {
+		rc = wait_event_timeout(ctx->pp_waitq,
+				atomic_read(&ctx->koff_cnt) == 0,
+				KOFF_TIMEOUT);
 
 	if (rc <= 0) {
-		u32 status, mask;
-
-		mask = BIT(MDSS_MDP_IRQ_PING_PONG_COMP + ctx->pp_num);
-		status = mask & readl_relaxed(ctl->mdata->mdp_base +
-				MDSS_MDP_REG_INTR_STATUS);
-		if (status) {
-			WARN(1, "pp done but irq not triggered\n");
-			mdss_mdp_irq_clear(ctl->mdata,
-					MDSS_MDP_IRQ_PING_PONG_COMP,
-					ctx->pp_num);
-			local_irq_save(flags);
-			mdss_mdp_cmd_pingpong_done(ctl);
-			local_irq_restore(flags);
-			rc = 1;
+		if (i > 2) {
+			u32 status, mask;
+			mask = BIT(MDSS_MDP_IRQ_PING_PONG_COMP + ctx->pp_num);
+			status = mask & readl_relaxed(ctl->mdata->mdp_base +
+					MDSS_MDP_REG_INTR_STATUS);
+			if (status) {
+				WARN(1, "pp done but irq not triggered\n");
+				mdss_mdp_irq_clear(ctl->mdata,
+						MDSS_MDP_IRQ_PING_PONG_COMP,
+						ctx->pp_num);
+				local_irq_save(flags);
+				mdss_mdp_cmd_pingpong_done(ctl);
+				local_irq_restore(flags);
+				rc = 1;
+			}
+			rc = atomic_read(&ctx->koff_cnt) == 0;
 		}
-
-		rc = atomic_read(&ctx->koff_cnt) == 0;
 	}
-
 	if (rc <= 0) {
-		if (!ctx->pp_timeout_report_cnt) {
-			WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
-					rc, ctl->num);
-			mdss_dsi_debug_check_te(pdata);
-			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
-					"edp", "hdmi", "panic");
+		if (i > 2) {
+			if (!ctx->pp_timeout_report_cnt) {
+				WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
+						rc, ctl->num);
+				mdss_dsi_debug_check_te(pdata);
+				MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
+						"edp", "hdmi", "panic");
+			}
+			ctx->pp_timeout_report_cnt++;
+			rc = -EPERM;
+			mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_TIMEOUT);
+			atomic_add_unless(&ctx->koff_cnt, -1, 0);
+		} else {
+			rc = 0;
+			ctx->pp_timeout_report_cnt = 0;
 		}
-		ctx->pp_timeout_report_cnt++;
-		rc = -EPERM;
-		mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_TIMEOUT);
-		atomic_add_unless(&ctx->koff_cnt, -1, 0);
-	} else {
-		rc = 0;
-		ctx->pp_timeout_report_cnt = 0;
 	}
-
+	}
 	/* signal any pending ping pong done events */
 	while (atomic_add_unless(&ctx->pp_done_cnt, -1, 0))
 		mdss_mdp_ctl_notify(ctx->ctl, MDP_NOTIFY_FRAME_DONE);
