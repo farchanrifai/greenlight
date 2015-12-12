@@ -127,8 +127,8 @@ enum qpnp_vadc_channels {
  * enum qpnp_iadc_channels - QPNP IADC channel list
  */
 enum qpnp_iadc_channels {
-	INTERNAL_RSENSE = 0,
-	EXTERNAL_RSENSE,
+	EXTERNAL_RSENSE = 0,
+	INTERNAL_RSENSE,
 	ALT_LEAD_PAIR,
 	GAIN_CALIBRATION_17P857MV,
 	OFFSET_CALIBRATION_SHORT_CADC_LEADS,
