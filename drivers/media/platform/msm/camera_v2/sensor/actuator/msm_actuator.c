@@ -907,9 +907,9 @@ static int32_t msm_actuator_get_subdev_id(struct msm_actuator_ctrl_t *a_ctrl,
 		pr_err("failed\n");
 		return -EINVAL;
 	}
-	if (a_ctrl->act_device_type == MSM_CAMERA_PLATFORM_DEVICE)
-		*subdev_id = a_ctrl->pdev->id;
-	else
+	//if (a_ctrl->act_device_type == MSM_CAMERA_PLATFORM_DEVICE)
+	//	*subdev_id = a_ctrl->pdev->id;
+	//else
 		*subdev_id = a_ctrl->subdev_id;
 
 	CDBG("subdev_id %d\n", *subdev_id);
