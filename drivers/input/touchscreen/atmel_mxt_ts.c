@@ -28,6 +28,11 @@
 #include <linux/string.h>
 #include <linux/of_gpio.h>
 #include <asm/bootinfo.h>
+#include <mach/gpiomux.h>
+#ifdef CONFIG_FB
+#include <linux/notifier.h>
+#include <linux/fb.h>
+#endif
 
 /* Version */
 #define MXT_VER_20		20
@@ -591,6 +596,7 @@ struct mxt_data {
 	bool is_ignore_channel_saved;
 	bool init_complete;
 	bool use_last_golden;
+	bool irq_enabled;
 	struct mutex golden_mutex;
 
 
@@ -630,6 +636,11 @@ struct mxt_data {
 	u8 T100_reportid_max;
 	u8 T102_reportid;
 };
+
+
+#ifdef CONFIG_FB
+	struct notifier_block fb_notif;
+#endif
 
 static struct mxt_suspend mxt_save[] = {
 	{MXT_PROCG_NOISE_T22, MXT_NOISE_CTRL,
@@ -3372,6 +3383,23 @@ release_firmware:
 	return ret;
 }
 
+
+static void mxt_enable_irq(struct mxt_data *data) {
+
+	if (likely(!data->irq_enabled)) {
+		enable_irq(data->irq);
+		data->irq_enabled=true;
+	}
+}
+
+static void mxt_disable_irq(struct mxt_data *data) {
+	
+	if(likely(data->irq_enabled)) {
+		disable_irq(data->irq);
+		data->irq_enabled=false;
+	}
+}
+
 static ssize_t mxt_update_fw_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -3411,7 +3439,7 @@ static ssize_t mxt_update_fw_store(struct device *dev,
 	}
 
 	dev_info(dev, "Identify firmware name :%s \n", fw_name);
-	disable_irq(data->irq);
+	mxt_disable_irq(data->irq);
 
 	error = mxt_load_fw(dev, fw_name);
 	if (error) {
@@ -3432,7 +3460,7 @@ static ssize_t mxt_update_fw_store(struct device *dev,
 	}
 
 	if (data->state == APPMODE) {
-		enable_irq(data->irq);
+		mxt_enable_irq(data->irq);
 	}
 
 	kfree(fw_name);
@@ -4895,7 +4923,7 @@ static int mxt_suspend(struct device *dev)
 	struct mxt_data *data = i2c_get_clientdata(client);
 	struct input_dev *input_dev = data->input_dev;
 
-	disable_irq(client->irq);
+	mxt_disable_irq(client->irq);
 
 	data->safe_count = 0;
 	cancel_delayed_work_sync(&data->update_setting_delayed_work);
@@ -4960,7 +4988,7 @@ static int mxt_resume(struct device *dev)
 
 	mutex_unlock(&input_dev->mutex);
 
-	enable_irq(client->irq);
+	mxt_enable_irq(client->irq);
 
 	return 0;
 }
@@ -4989,6 +5017,49 @@ static int mxt_input_disable(struct input_dev *in_dev)
 	return error;
 }
 
+#ifdef CONFIG_FB
+static int fb_notifier_cb(struct notifier_block *self,
+			unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	int *blank;
+	struct mxt_data *mxt_data =
+		container_of(self, struct mxt_data, fb_notif);
+
+	if (evdata && evdata->data && event == FB_EVENT_BLANK && mxt_data) {
+		blank = evdata->data;
+		if (*blank == FB_BLANK_UNBLANK) {
+			dev_info(&mxt_data->client->dev, "##### UNBLANK SCREEN #####\n");
+			mxt_input_enable(mxt_data->input_dev);
+		} else if (*blank == FB_BLANK_POWERDOWN) {
+			dev_info(&mxt_data->client->dev, "##### BLANK SCREEN #####\n");
+			mxt_input_disable(mxt_data->input_dev);
+		}
+	}
+
+	return 0;
+}
+
+static void configure_sleep(struct mxt_data *data)
+{
+	int ret;
+
+	data->fb_notif.notifier_call = fb_notifier_cb;
+	ret = fb_register_client(&data->fb_notif);
+	if (ret) {
+		dev_err(&data->client->dev,
+			"Unable to register fb_notifier, err: %d\n", ret);
+	}
+}
+#else
+static void configure_sleep(struct mxt_data *data)
+{
+	data->input_dev->enable = mxt_input_enable;
+	data->input_dev->disable = mxt_input_disable;
+	data->input_dev->enabled = true;
+}
+#endif
+
 static int mxt_initialize_input_device(struct mxt_data *data)
 {
 	struct device *dev = &data->client->dev;
@@ -5014,9 +5085,6 @@ static int mxt_initialize_input_device(struct mxt_data *data)
 	input_dev->dev.parent = dev;
 	input_dev->open = mxt_input_open;
 	input_dev->close = mxt_input_close;
-	input_dev->enable = mxt_input_enable;
-	input_dev->disable = mxt_input_disable;
-	input_dev->enabled = true;
 	input_dev->event = mxt_input_event;
 
 	__set_bit(EV_ABS, input_dev->evbit);
@@ -5074,6 +5142,7 @@ static int mxt_initialize_input_device(struct mxt_data *data)
 	}
 
 	data->input_dev = input_dev;
+	configure_sleep(data);
 
 	return 0;
 }
@@ -5777,7 +5846,7 @@ static void mxt_shutdown(struct i2c_client *client)
 {
 	struct mxt_data *data = i2c_get_clientdata(client);
 
-	disable_irq(data->irq);
+	mxt_disable_irq(data->irq);
 	data->state = SHUTDOWN;
 }
 
