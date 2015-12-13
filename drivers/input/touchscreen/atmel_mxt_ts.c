@@ -5740,6 +5740,8 @@ static int __devinit mxt_probe(struct i2c_client *client,
 		goto err_free_input_device;
 	}
 
+	data->irq_enabled = true;
+
 	error = sysfs_create_group(&client->dev.kobj, &mxt_attr_group);
 	if (error) {
 		dev_err(&client->dev, "Failure %d creating sysfs group\n",
