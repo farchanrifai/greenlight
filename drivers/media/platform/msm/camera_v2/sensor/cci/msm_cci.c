@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2015 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1120,6 +1121,7 @@ static struct of_device_id msm_sensor_dt_match_x3[] = {
 };
 
 static struct of_device_id msm_sensor_dt_match_x4[] = {
+	{.compatible = "qcom,eeprom"},
 	{.compatible = "qcom,actuator"},
 	{.compatible = "qcom,imx214"},
 	{.compatible = "qcom,s5k3m2"},
@@ -1134,7 +1136,6 @@ static struct of_device_id msm_sensor_dt_match_x5[] = {
 	{.compatible = "qcom,ov4688"},
 	{}
 };
-
 
 
 static int __devinit msm_cci_probe(struct platform_device *pdev)

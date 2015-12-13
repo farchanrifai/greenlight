@@ -1,4 +1,5 @@
 /* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2015 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -59,8 +60,10 @@ int32_t msm_led_i2c_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 		pr_err("failed\n");
 		return -EINVAL;
 	}
-	fctrl->flash_op_current[0] = cfg->flash_current[0];
+
+        fctrl->flash_op_current[0] = cfg->flash_current[0];
         fctrl->flash_op_current[1] = cfg->flash_current[1];
+
 	switch (cfg->cfgtype) {
 
 	case MSM_CAMERA_LED_INIT:
@@ -112,9 +115,9 @@ int msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
 			power_info->gpio_conf->cam_gpiomux_conf_tbl,
 			power_info->gpio_conf->cam_gpiomux_conf_tbl_size);
 	}
+
 	if(gpio_get_value_cansleep(power_info->gpio_conf->gpio_num_info->gpio_num[SENSOR_GPIO_FL_EN]))
 		return 0; /* already released */
-
 
 	rc = msm_camera_request_gpio_table(
 		power_info->gpio_conf->cam_gpio_req_tbl,
@@ -125,6 +128,7 @@ int msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
 	}
 
 	gpio_direction_output(power_info->gpio_conf->gpio_num_info->gpio_num[SENSOR_GPIO_FL_EN], GPIO_OUT_HIGH);
+
 	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
 			fctrl->flash_i2c_client,
@@ -147,6 +151,7 @@ int msm_flash_led_release(struct msm_led_flash_ctrl_t *fctrl)
 		pr_err("%s:%d fctrl NULL\n", __func__, __LINE__);
 		return -EINVAL;
 	}
+
 	flashdata = fctrl->flashdata;
 	power_info = &flashdata->power_info;
 
@@ -182,6 +187,7 @@ int msm_flash_led_off(struct msm_led_flash_ctrl_t *fctrl)
 		pr_err("%s:%d fctrl NULL\n", __func__, __LINE__);
 		return -EINVAL;
 	}
+
 	flashdata = fctrl->flashdata;
 	power_info = &flashdata->power_info;
 	CDBG("%s:%d called\n", __func__, __LINE__);
@@ -205,7 +211,9 @@ int msm_flash_led_off(struct msm_led_flash_ctrl_t *fctrl)
 int msm_flash_led_low(struct msm_led_flash_ctrl_t *fctrl)
 {
 	int rc = 0;
+
 	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
+
 		fctrl->reg_setting->low_setting->reg_setting[0].reg_data = fctrl->flash_op_current[0];
 
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
@@ -225,6 +233,7 @@ int msm_flash_led_torch(struct msm_led_flash_ctrl_t *fctrl, uint16_t value)
 	int rc = 0;
 
 	fctrl->reg_setting->torch_setting->reg_setting[0].reg_data = 127 - value;
+
 	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
 			fctrl->flash_i2c_client,
@@ -239,8 +248,11 @@ int msm_flash_led_torch(struct msm_led_flash_ctrl_t *fctrl, uint16_t value)
 int msm_flash_led_high(struct msm_led_flash_ctrl_t *fctrl)
 {
 	int rc = 0;
+
 	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
-	fctrl->reg_setting->high_setting->reg_setting[0].reg_data = fctrl->flash_op_current[0] * 2 / 3;
+
+		fctrl->reg_setting->high_setting->reg_setting[0].reg_data = fctrl->flash_op_current[0] * 2 / 3;
+
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
 			fctrl->flash_i2c_client,
 			fctrl->reg_setting->high_setting);
@@ -336,12 +348,12 @@ static int32_t msm_led_get_dt_data(struct device_node *of_node,
 			}
 
 			of_node_put(flash_src_node);
+
 			if (get_hw_version_major() == 4)
 				/* X4 - use single led */
 				fctrl->flash_op_current[i] = 1000;
 			else    /* X3 - use dual   led */
 				fctrl->flash_op_current[i] = 500;
-
 
 			CDBG("max_current[%d] %d\n",
 				i, fctrl->flash_op_current[i]);
@@ -504,7 +516,6 @@ static struct led_classdev msm_led_i2c_torch = {
         .brightness_get = msm_led_i2c_torch_brightness_get,
         .brightness             = LED_OFF,
 };
-
 
 
 int msm_flash_i2c_probe(struct i2c_client *client,

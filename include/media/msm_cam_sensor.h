@@ -12,7 +12,7 @@
 #define I2C_SEQ_REG_DATA_MAX      20
 #define MAX_CID                   16
 
-#define I2C_USER_REG_DATA_MAX 1024
+#define I2C_USER_REG_DATA_MAX 1160
 
 #define MSM_SENSOR_MCLK_8HZ   8000000
 #define MSM_SENSOR_MCLK_16HZ  16000000
@@ -498,9 +498,9 @@ enum msm_actuator_cfg_type_t {
 	CFG_SET_DEFAULT_FOCUS,
 	CFG_MOVE_FOCUS,
 	CFG_SET_POSITION,
-	CFG_SET_CAM_MODE,
 	CFG_ACTUATOR_POWERDOWN,
 	CFG_ACTUATOR_POWERUP,
+	CFG_SET_CAM_MODE,
 };
 
 enum actuator_type {
@@ -619,7 +619,6 @@ typedef enum{
     ACTUATOR_CAM_MODE_CAMCORDER,
     ACTUATOR_CAM_MODE_MAX,
 } actuator_cam_mode_t;
-
 
 struct msm_actuator_cfg_data {
 	int cfgtype;

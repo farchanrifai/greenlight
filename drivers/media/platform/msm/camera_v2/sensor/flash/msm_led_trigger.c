@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2015 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -67,7 +68,7 @@ static int32_t msm_led_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 				led_trigger_event(fctrl->flash_trigger[i], 0);
 		if (fctrl->torch_trigger)
 			led_trigger_event(fctrl->torch_trigger, 0);
-	fctrl->torch_brightness = 0;
+		fctrl->torch_brightness = 0;
 		break;
 
 	case MSM_CAMERA_LED_LOW:
@@ -84,6 +85,7 @@ static int32_t msm_led_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 			led_trigger_event(fctrl->torch_trigger,
 				curr_l);
 			fctrl->torch_brightness = curr_l;
+
 		}
 		break;
 
@@ -178,6 +180,7 @@ static int32_t msm_led_trigger_probe(struct platform_device *pdev)
 			pr_err("invalid count\n");
 			return -EINVAL;
 		}
+
 		if (get_hw_version_major() == 4)
 			/* X4 - use single led */
 			count = 1;
