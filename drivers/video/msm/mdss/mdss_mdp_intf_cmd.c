@@ -530,8 +530,7 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 				atomic_read(&ctx->koff_cnt) == 0,
 				KOFF_TIMEOUT);
 
-	if (rc <= 0) {
-		if (i > 2) {
+		if (rc <= 0) {
 			u32 status, mask;
 			mask = BIT(MDSS_MDP_IRQ_PING_PONG_COMP + ctx->pp_num);
 			status = mask & readl_relaxed(ctl->mdata->mdp_base +
@@ -548,26 +547,29 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 			}
 			rc = atomic_read(&ctx->koff_cnt) == 0;
 		}
-	}
-	if (rc <= 0) {
-		if (i > 2) {
-			if (!ctx->pp_timeout_report_cnt) {
-				WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
+		if (rc <= 0) {
+			if (i > 2) {
+				if (!ctx->pp_timeout_report_cnt) {
+					WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
+							rc, ctl->num);
+					mdss_dsi_debug_check_te(pdata);
+					MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
+							"edp", "hdmi", "panic");
+				}
+				ctx->pp_timeout_report_cnt++;
+				rc = -EPERM;
+				mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_TIMEOUT);
+				atomic_add_unless(&ctx->koff_cnt, -1, 0);
+			} else
+				pr_info("i %d cmd kickoff (%d) ctl=%d\n", i,
 						rc, ctl->num);
-				mdss_dsi_debug_check_te(pdata);
-				MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
-						"edp", "hdmi", "panic");
-			}
-			ctx->pp_timeout_report_cnt++;
-			rc = -EPERM;
-			mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_TIMEOUT);
-			atomic_add_unless(&ctx->koff_cnt, -1, 0);
 		} else {
 			rc = 0;
 			ctx->pp_timeout_report_cnt = 0;
+			break;
 		}
 	}
-	}
+	
 	/* signal any pending ping pong done events */
 	while (atomic_add_unless(&ctx->pp_done_cnt, -1, 0))
 		mdss_mdp_ctl_notify(ctx->ctl, MDP_NOTIFY_FRAME_DONE);
