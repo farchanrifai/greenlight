@@ -31,7 +31,7 @@
 #define FAST_CHARGE_VERSION	"version 1.0 by Paul Reioux"
 
 int force_fast_charge;
-int fast_charge_level = FAST_CHARGE_1200;
+int fast_charge_level = FAST_CHARGE_1800;
 
 /* sysfs interface for "force_fast_charge" */
 static ssize_t force_fast_charge_show(struct kobject *kobj,
@@ -76,12 +76,12 @@ static ssize_t charge_level_store(struct kobject *kobj,
 	sscanf(buf, "%du", &new_charge_level);
 
 	switch (new_charge_level) {
-		case FAST_CHARGE_500:
-		case FAST_CHARGE_900:
-		case FAST_CHARGE_1200:
-		case FAST_CHARGE_1500:
-		case FAST_CHARGE_2000:
+		case FAST_CHARGE_700:
+		case FAST_CHARGE_1000:
+		case FAST_CHARGE_1400:
+		case FAST_CHARGE_1800:
 		case FAST_CHARGE_2100:
+		case FAST_CHARGE_2200:
 			fast_charge_level = new_charge_level;
 			return count;
 		default:
