@@ -249,9 +249,7 @@ struct mdss_dsi_ctrl_pdata {
 	void (*switch_mode) (struct mdss_panel_data *pdata, int mode);
 	struct mdss_panel_data panel_data;
 	unsigned char *ctrl_base;
-	struct dss_io_data ctrl_io;
 	struct dss_io_data mmss_misc_io;
-	struct dss_io_data phy_io;
 	int reg_size;
 	u32 bus_clk_cnt;
 	u32 link_clk_cnt;
