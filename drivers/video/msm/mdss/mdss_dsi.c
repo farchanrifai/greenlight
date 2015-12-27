@@ -64,8 +64,8 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 				panel_data);
 	pr_info("%s: enable=%d\n", __func__, enable);
 
-//	if (pdata->panel_info.dynamic_switch_pending)
-//		return 0;
+	if (pdata->panel_info.dynamic_switch_pending)
+		return 0;
 
 	if (enable) {
 		if (!ctrl_pdata->panel_sleepwrmod || poweron_firsttime) {
@@ -86,7 +86,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 			}
 		}
 
-		if (!pdata->panel_info.mipi.lp11_init || pdata->panel_info.panel_power_on == 0) {
+		if (!pdata->panel_info.mipi.lp11_init && pdata->panel_info.panel_power_on == 0) {
 			ret = mdss_dsi_panel_reset(pdata, 1);
 			if (ret) {
 				pr_err("%s: Panel reset failed. rc=%d\n",
@@ -707,6 +707,8 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		return 0;
 	}
 
+	
+
 	if (!ctrl_pdata->panel_sleepwrmod || poweron_firsttime) {
 		ret = mdss_dsi_panel_pon(pdata, 1);
 		if (ret) {
@@ -719,7 +721,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 			pr_err("%s:Panel power on failed. rc=%d\n", __func__, ret);
 			return ret;
 		}
-
+		
 	}
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
 	if (ret) {
