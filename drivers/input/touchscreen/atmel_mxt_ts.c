@@ -4603,7 +4603,7 @@ static void mxt_start(struct mxt_data *data)
 	int error;
 	struct device *dev = &data->client->dev;
 
-	if (mxt_prevent_sleep()) {
+	if (mxt_prevent_sleep() && data->is_stopped!=1) {
 		mxt_set_gesture_wake_up(data, false);
 		if (!data->is_wakeup_by_gesture)
 			mxt_set_t7_for_gesture(data, false);
@@ -4754,6 +4754,8 @@ static int mxt_suspend(struct device *dev)
 				"Atmel regulator disable for vddio failed: %d\n", ret);
 			}
 		}
+		data->is_stopped = 1;
+
 	}
 
 
@@ -4800,8 +4802,7 @@ static int mxt_resume(struct device *dev)
 
 		mutex_unlock(&input_dev->mutex);
 	} else {
-		if (!mxt_prevent_sleep())
-			mxt_enable_irq(data);
+		mxt_enable_irq(data);
 
 		if (data->regulator_vdd && data->regulator_avdd && data->regulator_vddio) {
 			ret = regulator_enable(data->regulator_vdd);
@@ -4826,6 +4827,7 @@ static int mxt_resume(struct device *dev)
 		if (input_dev->users)
 			mxt_start(data);
 
+		data->is_stopped = false;
 		mutex_unlock(&input_dev->mutex);
 	}
 	return 0;
