@@ -34,6 +34,7 @@
 #include <linux/fb.h>
 #endif
 #include <linux/input/sweep2wake.h>
+#include <linux/input/doubletap2wake.h>
 #include <linux/input/wake_helpers.h>
 
 /* Version */
@@ -1241,7 +1242,7 @@ static int mxt_prevent_sleep() {
 	if (in_phone_call())
 		return 0;
 
-	if (s2w_switch > 0)
+	if (s2w_switch > 0 || dt2w_switch == 1)
 		return 1;
 	else
 		return 0;
