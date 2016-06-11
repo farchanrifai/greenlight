@@ -5282,28 +5282,12 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 	int rc = 0;
 	const char *bpd;
 
-	if (get_hw_version_major() == 5 && get_hw_version_minor() > 3) {
-		OF_PROP_READ(chip, max_voltage_mv, "vddmax-mv-x5", rc, 0);
-		OF_PROP_READ(chip, safe_voltage_mv, "vddsafe-mv-x5", rc, 0);
-	} else {
-		OF_PROP_READ(chip, max_voltage_mv, "vddmax-mv", rc, 0);
-		OF_PROP_READ(chip, safe_voltage_mv, "vddsafe-mv", rc, 0);
-	}
-
+	OF_PROP_READ(chip, max_voltage_mv, "vddmax-mv", rc, 0);
+	OF_PROP_READ(chip, safe_voltage_mv, "vddsafe-mv", rc, 0);
 	OF_PROP_READ(chip, min_voltage_mv, "vinmin-mv", rc, 0);
 	OF_PROP_READ(chip, resume_delta_mv, "vbatdet-delta-mv", rc, 0);
-	if (get_hw_version_major() == 3)
-		OF_PROP_READ(chip, safe_current, "ibatsafe-ma-x3", rc, 0);
-	if (get_hw_version_major() == 4)
-		OF_PROP_READ(chip, safe_current, "ibatsafe-ma-x4", rc, 0);
-	if (get_hw_version_major() == 5)
-		OF_PROP_READ(chip, safe_current, "ibatsafe-ma-x5", rc, 0);
-	if (get_hw_version_major() == 3)
-		OF_PROP_READ(chip, max_bat_chg_current, "ibatmax-ma-x3", rc, 0);
-	if (get_hw_version_major() == 4)
-		OF_PROP_READ(chip, max_bat_chg_current, "ibatmax-ma-x4", rc, 0);
-	if (get_hw_version_major() == 5)
-		OF_PROP_READ(chip, max_bat_chg_current, "ibatmax-ma-x5", rc, 0);
+	OF_PROP_READ(chip, safe_current, "ibatsafe-ma", rc, 0);
+	OF_PROP_READ(chip, max_bat_chg_current, "ibatmax-ma", rc, 0);
 	if (rc)
 		pr_err("failed to read required dt parameters %d\n", rc);
 
@@ -5358,20 +5342,10 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 	}
 
 	/* Get the use-external-rsense property */
-	if (get_hw_version_major() == 3) {
-		chip->use_external_rsense = of_property_read_bool(
-				chip->spmi->dev.of_node,
-				"qcom,use-external-rsense-x3");
-	} else if (get_hw_version_major() == 4) {
-		chip->use_external_rsense = of_property_read_bool(
-				chip->spmi->dev.of_node,
-				"qcom,use-external-rsense-x4");
-	} else if (get_hw_version_major() == 5) {
-		chip->use_external_rsense = of_property_read_bool(
-				chip->spmi->dev.of_node,
-				"qcom,use-external-rsense-x5");
-	}
-
+	chip->use_external_rsense = of_property_read_bool(
+			chip->spmi->dev.of_node,
+			"qcom,use-external-rsense");
+	
 	/* Get the btc-disabled property */
 	chip->btc_disabled = of_property_read_bool(chip->spmi->dev.of_node,
 					"qcom,btc-disabled");
@@ -5422,15 +5396,8 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 			of_property_read_bool(chip->spmi->dev.of_node,
 					"qcom,parallel-ovp-mode");
 
-	if (get_hw_version_major() == 3)
-		of_get_property(chip->spmi->dev.of_node, "qcom,thermal-mitigation-x3",
-				&(chip->thermal_levels));
-	if (get_hw_version_major() == 4)
-		of_get_property(chip->spmi->dev.of_node, "qcom,thermal-mitigation-x4",
-				&(chip->thermal_levels));
-	if (get_hw_version_major() == 5)
-		of_get_property(chip->spmi->dev.of_node, "qcom,thermal-mitigation-x5",
-				&(chip->thermal_levels));
+	of_get_property(chip->spmi->dev.of_node, "qcom,thermal-mitigation",
+			&(chip->thermal_levels));
 
 	if (chip->thermal_levels > sizeof(int)) {
 		chip->thermal_mitigation = devm_kzalloc(chip->dev,
@@ -5443,18 +5410,9 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 		}
 
 		chip->thermal_levels /= sizeof(int);
-		if (get_hw_version_major() == 3)
-			rc = of_property_read_u32_array(chip->spmi->dev.of_node,
-					"qcom,thermal-mitigation-x3",
-					chip->thermal_mitigation, chip->thermal_levels);
-		if (get_hw_version_major() == 4)
-			rc = of_property_read_u32_array(chip->spmi->dev.of_node,
-					"qcom,thermal-mitigation-x4",
-					chip->thermal_mitigation, chip->thermal_levels);
-		if (get_hw_version_major() == 5)
-			rc = of_property_read_u32_array(chip->spmi->dev.of_node,
-					"qcom,thermal-mitigation-x5",
-					chip->thermal_mitigation, chip->thermal_levels);
+		rc = of_property_read_u32_array(chip->spmi->dev.of_node,
+				"qcom,thermal-mitigation",
+				chip->thermal_mitigation, chip->thermal_levels);
 		if (rc) {
 			pr_err("qcom,thermal-mitigation missing in dt\n");
 			return rc;
