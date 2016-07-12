@@ -3690,6 +3690,110 @@ mmap_range_valid(unsigned long addr, unsigned long len)
 	return ((ULONG_MAX - addr) > len) && ((addr + len) < TASK_SIZE);
 }
 
+/**
+ * kgsl_check_gpu_addr_collision() - Check if an address range collides with
+ * existing allocations of a process
+ * @private: Pointer to process private
+ * @entry: Memory entry of the memory for which address range is being
+ * considered
+ * @addr: Start address of the address range for which collision is checked
+ * @len: Length of the address range
+ * @gpumap_free_addr: The lowest address from where to look for a free address
+ * range because addresses below this are known to conflict
+ * @flag_top_down: Indicates whether to search for unmapped region in top down
+ * or bottom mode
+ * @align: The alignment requirement of the unmapped region
+ *
+ * Function checks if the given address range collides, and if collision
+ * is found then it keeps incrementing the gpumap_free_addr until it finds
+ * an address that does not collide. This suggested addr can be used by the
+ * caller to check if it's acceptable.
+ */
+static int kgsl_check_gpu_addr_collision(
+				struct kgsl_process_private *private,
+				struct kgsl_mem_entry *entry,
+				unsigned long addr, unsigned long len,
+				unsigned long *gpumap_free_addr,
+				bool flag_top_down,
+				unsigned int align)
+{
+	int ret = -EAGAIN;
+	struct kgsl_mem_entry *collision_entry = NULL;
+	spin_lock(&private->mem_lock);
+	if (kgsl_sharedmem_region_empty(private, addr, len, &collision_entry)) {
+		/*
+		 * We found a free memory map, claim it here with
+		 * memory lock held
+		 */
+		entry->memdesc.gpuaddr = addr;
+		/* This should never fail */
+		ret = kgsl_mem_entry_track_gpuaddr(private, entry);
+		spin_unlock(&private->mem_lock);
+		BUG_ON(ret);
+		/* map cannot be called with lock held */
+		ret = kgsl_mmu_map(private->pagetable,
+					&entry->memdesc);
+		if (ret) {
+			spin_lock(&private->mem_lock);
+			kgsl_mem_entry_untrack_gpuaddr(private, entry);
+			spin_unlock(&private->mem_lock);
+		} else {
+			/* Insert mem entry in mem_rb tree */
+			spin_lock(&private->mem_lock);
+			kgsl_mem_entry_commit_mem_list(private, entry);
+			spin_unlock(&private->mem_lock);
+		}
+	} else {
+		trace_kgsl_mem_unmapped_area_collision(entry, addr, len,
+							ret);
+		if (!gpumap_free_addr) {
+			spin_unlock(&private->mem_lock);
+			return ret;
+		}
+		/*
+		 * When checking for a free gap make sure the gap is large
+		 * enough to accomodate alignment
+		 */
+		len += 1 << align;
+
+		/*
+		 * Loop through the gpu map address space to find an unmapped
+		 * region of size len, lopping is done either top down or bottom
+		 * up based on flag_top_down setting
+		 */
+		do {
+			if (!collision_entry) {
+				ret = -ENOENT;
+				break;
+			}
+			if (flag_top_down) {
+				addr = collision_entry->memdesc.gpuaddr - len;
+				if (addr > collision_entry->memdesc.gpuaddr) {
+					ret = -EOVERFLOW;
+					break;
+				}
+			} else {
+				addr = collision_entry->memdesc.gpuaddr +
+					kgsl_memdesc_mmapsize(
+						&collision_entry->memdesc);
+				/* overflow check */
+				if (addr < collision_entry->memdesc.gpuaddr) {
+					ret = -EOVERFLOW;
+					break;
+				}
+			}
+			collision_entry = NULL;
+			if (kgsl_sharedmem_region_empty(private, addr, len,
+							&collision_entry)) {
+				*gpumap_free_addr = addr;
+				break;
+			}
+		} while (1);
+		spin_unlock(&private->mem_lock);
+	}
+	return ret;
+}
+
 static unsigned long
 kgsl_get_unmapped_area(struct file *file, unsigned long addr,
 			unsigned long len, unsigned long pgoff,
