@@ -85,14 +85,14 @@ done
 STRIP=/home/monish/kernel/Tools/arm-eabi-4.8/bin/arm-eabi-strip
 KERNEL_DIR=`pwd`
 REPACK_DIR="$KERNEL_DIR/zip/$ASSASIN_F/kernel_zip"
-PATCH_DIR="$KERNEL_DIR/zip/miui/kernel_zip/patch"
+DTBTOOL_DIR="$KERNEL_DIR/zip"
 ZIMAGE_DIR="$KERNEL_DIR/arch/arm/boot"
 
 ###########################################################################
 # Functions
 
 function make_dtb {
-		$REPACK_DIR/tools/dtbToolCM -2 -o $REPACK_DIR/$DTBIMAGE -s 2048 -p scripts/dtc/ arch/arm/boot/
+		$DTBTOOL_DIR/dtbToolCM -2 -o $REPACK_DIR/$DTBIMAGE -s 2048 -p scripts/dtc/ arch/arm/boot/
 
 }
 function clean_all {
@@ -108,7 +108,7 @@ function make_kernel {
 
 function make_zip {
 		cd $REPACK_DIR
-		zip -r9 ~/kernel/builds/ASSASIN-$ASSASIN_F-$(date +%d-%m_%H%M).zip *
+		zip -r ~/kernel/builds/ASSASIN-$ASSASIN_F-$(date +%d-%m_%H%M).zip *
 }
 
 function copy_modules {
