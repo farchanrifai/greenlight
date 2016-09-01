@@ -37,6 +37,7 @@ KERNEL="zImage"
 DTBIMAGE="dt.img"
 DEFCONFIG="cancro_user_defconfig"
 device="cancro"
+COMPILER="/home/monish/kernel/Tools/arm-eabi-6.0/bin"
 
 ###########################################################################
 # Kernel Details
@@ -46,7 +47,7 @@ ASSASIN_VER="$BASE_ASSASIN_VER$VER"
 
 ###########################################################################
 # Vars
-export CROSS_COMPILE="/home/monish/kernel/Tools/arm-eabi-4.8/bin/arm-eabi-"
+export CROSS_COMPILE="$COMPILER/arm-eabi-"
 export ARCH=arm
 export SUBARCH=arm
 export KBUILD_BUILD_USER="monish"
@@ -82,7 +83,7 @@ done
 ###########################################################################
 # Paths
 #STRIP=/toolchain-path/arm-eabi-strip
-STRIP=/home/monish/kernel/Tools/arm-eabi-4.8/bin/arm-eabi-strip
+STRIP=$COMPILER/arm-eabi-strip
 KERNEL_DIR=`pwd`
 REPACK_DIR="$KERNEL_DIR/zip/$ASSASIN_F/kernel_zip"
 DTBTOOL_DIR="$KERNEL_DIR/zip"
