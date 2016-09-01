@@ -82,6 +82,7 @@ GSYMS
 GTAGS
 
 zip/*
+kernel/hz.bc
 
 *.orig
 *~
