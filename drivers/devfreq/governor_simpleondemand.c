@@ -12,35 +12,58 @@
 #include <linux/errno.h>
 #include <linux/module.h>
 #include <linux/devfreq.h>
-#include <linux/math64.h>
+#include <linux/msm_adreno_devfreq.h>
+#include <linux/slab.h>
 #include "governor.h"
 
 #define DEVFREQ_SIMPLE_ONDEMAND	"simple_ondemand"
 
+/*
+ * CEILING is 50msec, larger than any standard
+ * frame length.
+ */
+#define CEILING			50000
+
 /* Default constants for DevFreq-Simple-Ondemand (DFSO) */
 #define DFSO_UPTHRESHOLD	60
-#define DFSO_DOWNDIFFERENCTIAL	20
+#define DFSO_DOWNDIFFERENCTIAL	30
 
-static unsigned int dfso_upthreshold = DFSO_UPTHRESHOLD;
-static unsigned int dfso_downdifferential = DFSO_DOWNDIFFERENCTIAL;
+struct gpu_meta_data {
 
+	unsigned int dfso_upthreshold;
+
+	unsigned int dfso_downdifferential;
+
+	unsigned int level;
+
+	unsigned int load;
+
+} *gpu_data;
+
+static inline int get_freq_num(struct devfreq *df) {
+
+	int num = 0; 
+	int i;
+
+	for (i = 0; df->profile->freq_table[i]; i++)
+		num++;
+
+	return num;
+}
 
 static int devfreq_simple_ondemand_func(struct devfreq *df,
 					unsigned long *freq,
 					u32 *flag)
 {
 	struct devfreq_dev_status stat;
-	struct devfreq_simple_ondemand_data *data = df->data;
-	int err;
-	unsigned long long a, b;
+	int ret = 0;
 	unsigned long max = (df->max_freq) ? df->max_freq : UINT_MAX;
-	unsigned long min = (df->min_freq) ? df->min_freq : 0;
 
 	stat.private_data = NULL;
 
-	err = df->profile->get_dev_status(df->dev.parent, &stat);
-	if (err)
-		return err;
+	ret = df->profile->get_dev_status(df->dev.parent, &stat);
+	if (ret)
+		return ret;
 
 	/* Prevent overflow */
 	if (stat.busy_time >= (1 << 24) || stat.total_time >= (1 << 24)) {
@@ -48,65 +71,53 @@ static int devfreq_simple_ondemand_func(struct devfreq *df,
 		stat.total_time >>= 7;
 	}
 
-	if (data && data->simple_scaling) {
-		if (stat.busy_time * 100 >
-		    stat.total_time * dfso_upthreshold)
-			*freq = max;
-		else if (stat.busy_time * 100 <
-		    stat.total_time * dfso_downdifferential)
-			*freq = min;
-		else
-			*freq = df->previous_freq;
-		return 0;
-	}
-
-	/* Assume MAX if it is going to be divided by zero */
-	if (stat.total_time == 0) {
+	/*
+	 * If there is an extended block of busy processing,
+	 * increase frequency. Otherwise run the normal algorithm.
+	 */
+	if (stat.busy_time > CEILING) {
 		*freq = max;
-		return 0;
+		return ret;
 	}
 
-	/* Set MAX if it's busy enough */
-	if (stat.busy_time * 100 >
-	    stat.total_time * dfso_upthreshold) {
+	/*
+	 * Assume the max frequency if;
+	 * 1.) The total time is 0 (division by 0)
+	 * 2.) The driver has no clue about the initial frequency
+	 *
+	 */
+	if (stat.total_time == 0
+		|| stat.current_frequency == 0) {
 		*freq = max;
-		return 0;
-	}
-
-	/* Set MAX if we do not know the initial frequency */
-	if (stat.current_frequency == 0) {
-		*freq = max;
-		return 0;
-	}
-
-	/* Keep the current frequency */
-	if (stat.busy_time * 100 >
-	    stat.total_time * (dfso_upthreshold - dfso_downdifferential)) {
-		*freq = stat.current_frequency;
-		return 0;
+		return ret;
 	}
 
 	/* Set the desired frequency based on the load */
-	a = stat.busy_time;
-	a *= stat.current_frequency;
-	b = div_u64(a, stat.total_time);
-	b *= 100;
-	b = div_u64(b, (dfso_upthreshold - dfso_downdifferential / 2));
-	*freq = (unsigned long) b;
+	gpu_data->load = (100 * (unsigned int)stat.busy_time) /
+			(unsigned int)stat.total_time;
 
-	if (df->min_freq && *freq < df->min_freq)
-		*freq = df->min_freq;
-	if (df->max_freq && *freq > df->max_freq)
-		*freq = df->max_freq;
+	if (gpu_data->load >= gpu_data->dfso_upthreshold) {
+		if (gpu_data->level > 0)		
+			gpu_data->level--;		
+	} else if (gpu_data->load <= gpu_data->dfso_downdifferential) {
+		if (gpu_data->level < get_freq_num(df))		
+			gpu_data->level++;
+	} else {
+		/* If unsure about the frequency, stay at the current */
+		*freq = stat.current_frequency;
+		return ret;
+	}
 
-	return 0;
+	*freq = df->profile->freq_table[gpu_data->level];
+
+	return ret;
 }
 
 static ssize_t simple_ondemand_upthreshold_show(struct kobject *kobj,
 						struct kobj_attribute *attr,
 						char *buf)
 {
-	return sprintf(buf, "%d\n", dfso_upthreshold);
+	return sprintf(buf, "%d\n", gpu_data->dfso_upthreshold);
 }
 
 static ssize_t simple_ondemand_upthreshold_store(struct kobject *kobj,
@@ -116,10 +127,10 @@ static ssize_t simple_ondemand_upthreshold_store(struct kobject *kobj,
 	unsigned int val;
 
 	sscanf(buf, "%d", &val);
-	if (val > 100 || val < dfso_downdifferential)
+	if (val > 100 || val < gpu_data->dfso_downdifferential)
 		return -EINVAL;
 
-	dfso_upthreshold = val;
+	gpu_data->dfso_upthreshold = val;
 
 	return count;
 }
@@ -128,7 +139,7 @@ static ssize_t simple_ondemand_downdifferential_show(struct kobject *kobj,
 						     struct kobj_attribute *attr,
 						     char *buf)
 {
-	return sprintf(buf, "%d\n", dfso_downdifferential);
+	return sprintf(buf, "%d\n", gpu_data->dfso_downdifferential);
 }
 
 static ssize_t simple_ondemand_downdifferential_store(struct kobject *kobj,
@@ -138,10 +149,10 @@ static ssize_t simple_ondemand_downdifferential_store(struct kobject *kobj,
 	unsigned int val;
 
 	sscanf(buf, "%d", &val);
-	if (val > dfso_upthreshold)
+	if (val > gpu_data->dfso_upthreshold)
 		return -EINVAL;
 
-	dfso_downdifferential = val;
+	gpu_data->dfso_downdifferential = val;
 
 	return count;
 }
@@ -207,6 +218,15 @@ static struct devfreq_governor devfreq_simple_ondemand = {
 
 static int __init devfreq_simple_ondemand_init(void)
 {
+	gpu_data = kzalloc(sizeof(*gpu_data), GFP_KERNEL);
+	if (!gpu_data)
+		return -ENOMEM;
+
+	gpu_data->dfso_upthreshold = DFSO_UPTHRESHOLD;
+	gpu_data->dfso_downdifferential = DFSO_DOWNDIFFERENCTIAL;
+	gpu_data->level = 0;
+	gpu_data->load = 0;
+
 	return devfreq_add_governor(&devfreq_simple_ondemand);
 }
 subsys_initcall(devfreq_simple_ondemand_init);
@@ -216,6 +236,7 @@ static void __exit devfreq_simple_ondemand_exit(void)
 	int ret;
 
 	ret = devfreq_remove_governor(&devfreq_simple_ondemand);
+	kfree(gpu_data);
 	if (ret)
 		pr_err("%s: failed remove governor %d\n", __func__, ret);
 
