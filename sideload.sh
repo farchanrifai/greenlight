@@ -1,6 +1,6 @@
 #!/bin/bash
  #
- # Copyright © 2014, Monish Kapadia "assasin.monish" <monishk10@yahoo.com>
+ # Copyright © 2016, Monish Kapadia "assasin.monish" <monishk10@yahoo.com>
  #
  # Custom Flash script for ease.
  #
