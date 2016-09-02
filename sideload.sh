@@ -24,6 +24,7 @@ adb reboot recovery
 #Path
 BUILD_PATH="/home/monish/kernel/builds"
 
+#Branch entry
 while read -p "Which branch(cm/miui)? " mchoice
 do
 case "$mchoice" in
@@ -45,6 +46,7 @@ case "$mchoice" in
 esac
 done
 
+#Time entry of zip file
 read -p "Time? " time
 echo "$time"
 
