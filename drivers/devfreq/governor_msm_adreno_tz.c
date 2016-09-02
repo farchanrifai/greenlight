@@ -46,6 +46,9 @@ static DEFINE_SPINLOCK(tz_lock);
 #define DEVFREQ_ADRENO_TZ	"msm-adreno-tz"
 #define TAG "msm_adreno_tz: "
 
+static unsigned int tz_target = TARGET;
+static unsigned int tz_cap = CAP;
+
 /* Trap into the TrustZone, and call funcs there. */
 static int __secure_tz_entry2(u32 cmd, u32 val1, u32 val2)
 {
@@ -115,6 +118,7 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq,
 
 	*freq = stats.current_frequency;
 	*flag = 0;
+
 
 #ifdef CONFIG_ADRENO_IDLER
 	if (adreno_idler(stats, devfreq, freq)) {
@@ -320,6 +324,8 @@ static int tz_resume(struct devfreq *devfreq)
 static int tz_suspend(struct devfreq *devfreq)
 {
 	struct devfreq_msm_adreno_tz_data *priv = devfreq->data;
+
+	__secure_tz_entry2(TZ_RESET_ID, 0, 0);
 
 	__secure_tz_entry2(TZ_RESET_ID, 0, 0);
 
