@@ -123,7 +123,7 @@ config THERMAL_MONITOR_SIMPLE
 	depends on THERMAL_TSENS8960 || THERMAL_TSENS8974
 	depends on CPU_FREQ_MSM
 	depends on !THERMAL_MONITOR
-	default n
+	default y
 	help
 	  This enables thermal monitoring capability in the kernel in the
 	  absence of a system wide thermal monitoring entity. Monitors temperature
