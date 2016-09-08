@@ -3064,6 +3064,12 @@ config FORCE_FAST_CHARGE
 	 A simple sysfs interface to force adapters that
 	 are detected as USB to charge as AC.
 
+config ALUCARD_HOTPLUG
+	bool "Enable alucard-hotplug cpu hotplug driver"
+	default y
+	help
+	  Alucard-hotplug cpu hotplug driver for ARM SOCs
+
 config KERNEL_TEXT_MPU_PROT
 	bool "Enable xpu protection of kernel r/o sections"
 	help
