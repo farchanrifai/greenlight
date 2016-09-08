@@ -53,6 +53,12 @@ void kmap_atomic_flush_unused(void);
 static inline void kmap_atomic_flush_unused(void) { }
 #endif
 
+#ifdef CONFIG_ARCH_WANT_KMAP_ATOMIC_FLUSH
+void kmap_atomic_flush_unused(void);
+#else
+static inline void kmap_atomic_flush_unused(void) { }
+#endif
+
 #else /* CONFIG_HIGHMEM */
 
 static inline unsigned int nr_free_highpages(void) { return 0; }
