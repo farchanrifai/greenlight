@@ -49,7 +49,6 @@
 #include <asm/syscalls.h>
 #include <asm/debugreg.h>
 #include <asm/switch_to.h>
-#include <asm/xen/hypervisor.h>
 
 asmlinkage extern void ret_from_fork(void);
 
@@ -420,17 +419,6 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 		     task_thread_info(prev_p)->flags & _TIF_WORK_CTXSW_PREV))
 		__switch_to_xtra(prev_p, next_p, tss);
 
-#ifdef CONFIG_XEN
-	/*
-	 * On Xen PV, IOPL bits in pt_regs->flags have no effect, and
-	 * current_pt_regs()->flags may not match the current task's
-	 * intended IOPL.  We need to switch it manually.
-	 */
-	if (unlikely(xen_pv_domain() &&
-		     prev->iopl != next->iopl))
-		xen_set_iopl_mask(next->iopl);
-#endif
-
 	return prev_p;
 }
 
@@ -482,59 +470,27 @@ void set_personality_ia32(bool x32)
 }
 EXPORT_SYMBOL_GPL(set_personality_ia32);
 
-/*
- * Called from fs/proc with a reference on @p to find the function
- * which called into schedule(). This needs to be done carefully
- * because the task might wake up and we might look at a stack
- * changing under us.
- */
 unsigned long get_wchan(struct task_struct *p)
 {
-	unsigned long start, bottom, top, sp, fp, ip;
+	unsigned long stack;
+	u64 fp, ip;
 	int count = 0;
 
 	if (!p || p == current || p->state == TASK_RUNNING)
 		return 0;
-
-	start = (unsigned long)task_stack_page(p);
-	if (!start)
+	stack = (unsigned long)task_stack_page(p);
+	if (p->thread.sp < stack || p->thread.sp >= stack+THREAD_SIZE)
 		return 0;
-
-	/*
-	 * Layout of the stack page:
-	 *
-	 * ----------- topmax = start + THREAD_SIZE - sizeof(unsigned long)
-	 * PADDING
-	 * ----------- top = topmax - TOP_OF_KERNEL_STACK_PADDING
-	 * stack
-	 * ----------- bottom = start + sizeof(thread_info)
-	 * thread_info
-	 * ----------- start
-	 *
-	 * The tasks stack pointer points at the location where the
-	 * framepointer is stored. The data on the stack is:
-	 * ... IP FP ... IP FP
-	 *
-	 * We need to read FP and IP, so we need to adjust the upper
-	 * bound by another unsigned long.
-	 */
-	top = start + THREAD_SIZE;
-	top -= 2 * sizeof(unsigned long);
-	bottom = start + sizeof(struct thread_info);
-
-	sp = ACCESS_ONCE(p->thread.sp);
-	if (sp < bottom || sp > top)
-		return 0;
-
-	fp = ACCESS_ONCE(*(unsigned long *)sp);
+	fp = *(u64 *)(p->thread.sp);
 	do {
-		if (fp < bottom || fp > top)
+		if (fp < (unsigned long)stack ||
+		    fp >= (unsigned long)stack+THREAD_SIZE)
 			return 0;
-		ip = ACCESS_ONCE(*(unsigned long *)(fp + sizeof(unsigned long)));
+		ip = *(u64 *)(fp+8);
 		if (!in_sched_functions(ip))
 			return ip;
-		fp = ACCESS_ONCE(*(unsigned long *)fp);
-	} while (count++ < 16 && p->state != TASK_RUNNING);
+		fp = *(u64 *)fp;
+	} while (count++ < 16);
 	return 0;
 }
 
