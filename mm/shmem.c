@@ -595,7 +595,7 @@ static void shmem_evict_inode(struct inode *inode)
 		kfree(xattr->name);
 		kfree(xattr);
 	}
-	WARN_ON(inode->i_blocks);
+	BUG_ON(inode->i_blocks);
 	shmem_free_inode(inode->i_sb);
 	end_writeback(inode);
 }
@@ -2018,13 +2018,11 @@ static struct dentry *shmem_fh_to_dentry(struct super_block *sb,
 {
 	struct inode *inode;
 	struct dentry *dentry = NULL;
-	u64 inum;
+	u64 inum = fid->raw[2];
+	inum = (inum << 32) | fid->raw[1];
 
 	if (fh_len < 3)
 		return NULL;
-
-	inum = fid->raw[2];
-	inum = (inum << 32) | fid->raw[1];
 
 	inode = ilookup5(sb, (unsigned long)(inum + fid->raw[0]),
 			shmem_match, fid->raw);
