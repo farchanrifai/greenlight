@@ -24,11 +24,11 @@
 #include <linux/of.h>
 
 /* Throttle CPU when reaches a certain tempertature*/
-unsigned int temp_threshold = 42;
+unsigned int temp_threshold = 47;
 module_param(temp_threshold, int, 0644);
 
 /* check every 0.5 seconds for the CPU temperature */
-unsigned int temp_scan_interval = 500;
+unsigned int temp_scan_interval = 750;
 module_param(temp_scan_interval, int, 0644);
 
 static struct thermal_info {
