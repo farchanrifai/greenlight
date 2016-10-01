@@ -344,10 +344,12 @@ struct mdss_panel_info {
 
 	u32 cont_splash_enabled;
 	u32 partial_update_enabled;
+	u32 dispparam_enabled;
 	struct ion_handle *splash_ihdl;
 	u32 panel_power_on;
 
 	uint32_t panel_dead;
+	uint32_t panel_paramstatus;
 	bool dynamic_switch_pending;
 	bool is_lpm_mode;
 

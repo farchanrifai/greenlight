@@ -884,7 +884,7 @@ static void mdss_fb_scale_bl(struct msm_fb_data_type *mfd, u32 *bl_lvl)
 {
 	u32 temp = *bl_lvl;
 
-	pr_debug("input = %d, scale = %d", temp, mfd->bl_scale);
+	pr_info("input = %d, scale = %d", temp, mfd->bl_scale);
 	if (temp >= mfd->bl_min_lvl) {
 		if (temp > mfd->panel_info->bl_max) {
 			pr_warn("%s: invalid bl level\n",
@@ -906,7 +906,7 @@ static void mdss_fb_scale_bl(struct msm_fb_data_type *mfd, u32 *bl_lvl)
 		if (temp < mfd->bl_min_lvl)
 			temp = mfd->bl_min_lvl;
 	}
-	pr_debug("output = %d", temp);
+	pr_info("output = %d", temp);
 
 	(*bl_lvl) = temp;
 }
@@ -917,6 +917,8 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 	struct mdss_panel_data *pdata;
 	u32 temp = bkl_lvl;
 	bool bl_notify_needed = false;
+
+	pr_info("backlight level passed %i\n", bkl_lvl);
 
 	if ((((!mfd->panel_power_on && mfd->dcm_state != DCM_ENTER)
 		|| !mfd->bl_updated) && !IS_CALIB_MODE_BL(mfd)) ||
@@ -950,7 +952,7 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 		if (mfd->bl_level_scaled == temp) {
 			mfd->bl_level = bkl_lvl;
 		} else {
-			pr_debug("backlight sent to panel :%d\n", temp);
+			pr_info("backlight sent to panel :%d\n", temp);
 			pdata->set_backlight(pdata, temp);
 			mfd->bl_level = bkl_lvl;
 			mfd->bl_level_scaled = temp;
@@ -990,6 +992,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	int ret = 0;
+	int last_mode = FB_BLANK_UNBLANK;
 
 	if (!op_enable)
 		return -EPERM;
@@ -997,6 +1000,8 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	if (mfd->dcm_state == DCM_ENTER)
 		return -EPERM;
 
+	pr_info("blank_mode command is %i\n", blank_mode);
+	
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
 		if (!mfd->panel_power_on && mfd->mdp.on_fnc) {
@@ -1059,6 +1064,11 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		}
 		break;
 	}
+	if ((blank_mode == last_mode) && (blank_mode == FB_BLANK_POWERDOWN)) {
+		pr_info("%s: turn panel off failed, sysmat_writecmd triggered !!!\n",
+			__func__);
+	}
+	last_mode = blank_mode;
 	/* Notify listeners */
 	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
 
@@ -2763,7 +2773,7 @@ static int __ioctl_wait_idle(struct msm_fb_data_type *mfd, u32 cmd)
 		(cmd != MSMFB_ASYNC_BLIT) &&
 		(cmd != MSMFB_BLIT) &&
 		(cmd != MSMFB_NOTIFY_UPDATE) &&
-		(cmd != MSMFB_OVERLAY_PREPARE)) {
+       		(cmd != MSMFB_OVERLAY_PREPARE))	{
 		ret = mdss_fb_pan_idle(mfd);
 	}
 
