@@ -2747,10 +2747,7 @@ static int mdss_mdp_runtime_resume(struct device *dev)
 		return -ENODEV;
 
 	dev_dbg(dev, "pm_runtime: resuming...\n");
-
-	/* do not resume panels when coming out of idle power collapse */
-	if (!mdata->idle_pc)
-		device_for_each_child(dev, &device_on, mdss_fb_suspres_panel);
+	device_for_each_child(dev, &device_on, mdss_fb_suspres_panel);
 	mdss_mdp_footswitch_ctrl(mdata, true);
 
 	return 0;
@@ -2779,10 +2776,7 @@ static int mdss_mdp_runtime_suspend(struct device *dev)
 		pr_err("MDP suspend failed\n");
 		return -EBUSY;
 	}
-
-	/* do not suspend panels when going in to idle power collapse */
-	if (!mdata->idle_pc)
-		device_for_each_child(dev, &device_on, mdss_fb_suspres_panel);
+	device_for_each_child(dev, &device_on, mdss_fb_suspres_panel);
 	mdss_mdp_footswitch_ctrl(mdata, false);
 
 	return 0;
