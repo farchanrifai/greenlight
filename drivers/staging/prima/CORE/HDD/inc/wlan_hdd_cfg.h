@@ -1519,6 +1519,13 @@ typedef enum
 #define CFG_OBSS_HT40_SCAN_WIDTH_TRIGGER_INTERVAL_MAX             ( 900 )
 #define CFG_OBSS_HT40_SCAN_WIDTH_TRIGGER_INTERVAL_DEFAULT         ( 200 )
 
+/* RPS configurations */
+#define CFG_RPS_CPU_MAP_MIN                        (0)
+#define CFG_RPS_CPU_MAP_MAX                        (0xff)
+
+#define CFG_RPS_CPU_MAP_NAME                       "rps_mask"
+#define CFG_RPS_CPU_MAP_DEFAULT                    (0x00)
+
 #define CFG_MULTICAST_HOST_FW_MSGS          "gMulticastHostMsgs"
 #define CFG_MULTICAST_HOST_FW_MSGS_MIN      (0)
 #define CFG_MULTICAST_HOST_FW_MSGS_MAX      (1)
@@ -2543,6 +2550,16 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_OPTIMIZE_CA_EVENT_ENABLE     ( 1 )
 #define CFG_OPTIMIZE_CA_EVENT_DEFAULT    ( 0 )
 
+/*
+ * BOffsetCorrectionEnable : This ini will control enabling/disabling
+ * of rate dependent power offsets in firmware
+ */
+
+#define CFG_SAR_BOFFSET_SET_CORRECTION_NAME      "gBOffsetCorrectionEnable"
+#define CFG_SAR_BOFFSET_SET_CORRECTION_MIN       (0)
+#define CFG_SAR_BOFFSET_SET_CORRECTION_MAX       (1)
+#define CFG_SAR_BOFFSET_SET_CORRECTION_DEFAULT   (0)
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -3057,6 +3074,8 @@ typedef struct
    v_BOOL_t                    ignorePeerHTopMode;
    v_U8_t                      gOptimizeCAevent;
    v_BOOL_t                    crash_inject_enabled;
+   v_U16_t                      rps_mask;
+   v_U8_t                      boffset_correction_enable;
 } hdd_config_t;
 
 /*--------------------------------------------------------------------------- 

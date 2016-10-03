@@ -2523,72 +2523,117 @@ eHalStatus csrInitChannelPowerList( tpAniSirGlobal pMac, tCsr11dinfo *ps11dinfo)
   return eHAL_STATUS_SUCCESS;
 }
 
-//pCommand may be NULL
-//Pass in sessionId in case pCommand is NULL. sessionId is not used in case pCommand is not NULL.
-void csrRoamRemoveDuplicateCommand(tpAniSirGlobal pMac, tANI_U32 sessionId, tSmeCmd *pCommand, eCsrRoamReason eRoamReason)
+/**
+ * csr_roam_remove_duplicate_cmd_from_list()- Remove duplicate roam cmd from
+ * list
+ *
+ * @pMac: pointer to global mac
+ * @sessionId: session id for the cmd
+ * @pList: pending list from which cmd needs to be removed
+ * @pCommand: cmd to be removed, can be NULL
+ * @eRoamReason: cmd with reason to be removed
+ *
+ * Remove duplicate command from the pending list.
+ *
+ * Return: void
+ */
+void csr_roam_remove_duplicate_cmd_from_list(tpAniSirGlobal pMac,
+            tANI_U32 sessionId, tDblLinkList *pList,
+            tSmeCmd *pCommand, eCsrRoamReason eRoamReason)
 {
     tListElem *pEntry, *pNextEntry;
     tSmeCmd *pDupCommand;
     tDblLinkList localList;
 
     vos_mem_zero(&localList, sizeof(tDblLinkList));
-    if(!HAL_STATUS_SUCCESS(csrLLOpen(pMac->hHdd, &localList)))
+    if (!HAL_STATUS_SUCCESS(csrLLOpen(pMac->hHdd, &localList)))
     {
-        smsLog(pMac, LOGE, FL(" failed to open list"));
+        smsLog(pMac, LOGE, FL("failed to open list"));
         return;
     }
-    csrLLLock( &pMac->sme.smeCmdPendingList );
-    pEntry = csrLLPeekHead( &pMac->sme.smeCmdPendingList, LL_ACCESS_NOLOCK );
-    while( pEntry )
+    csrLLLock(pList);
+    pEntry = csrLLPeekHead(pList, LL_ACCESS_NOLOCK);
+    while (pEntry)
     {
-        pNextEntry = csrLLNext( &pMac->sme.smeCmdPendingList, pEntry, LL_ACCESS_NOLOCK );
-        pDupCommand = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
-        // Remove the previous command if..
-        // - the new roam command is for the same RoamReason...
-        // - the new roam command is a NewProfileList.
-        // - the new roam command is a Forced Dissoc
-        // - the new roam command is from an 802.11 OID (OID_SSID or OID_BSSID).
-        if ( 
-            (pCommand && ( pCommand->sessionId == pDupCommand->sessionId ) &&
-                ((pCommand->command == pDupCommand->command) &&
-                /* This peermac check is requried for Softap/GO scenarios
-                 * For STA scenario below OR check will suffice as pCommand will 
-                 * always be NULL for STA scenarios
-                 */
-                (vos_mem_compare(pDupCommand->u.roamCmd.peerMac, pCommand->u.roamCmd.peerMac, sizeof(v_MACADDR_t))) &&
-                 (pCommand->u.roamCmd.roamReason == pDupCommand->u.roamCmd.roamReason ||
-                    eCsrForcedDisassoc == pCommand->u.roamCmd.roamReason ||
-                    eCsrHddIssued == pCommand->u.roamCmd.roamReason))) 
-                ||
-            //below the pCommand is NULL
-            ( (sessionId == pDupCommand->sessionId) &&
-              (eSmeCommandRoam == pDupCommand->command) &&
-                 ((eCsrForcedDisassoc == eRoamReason) ||
-                    (eCsrHddIssued == eRoamReason))
-               )
-           )
+        pNextEntry = csrLLNext(pList, pEntry, LL_ACCESS_NOLOCK);
+        pDupCommand = GET_BASE_ADDR(pEntry, tSmeCmd, Link);
+        /*
+         * Remove the previous command if..
+         * - the new roam command is for the same RoamReason...
+         * - the new roam command is a NewProfileList.
+         * - the new roam command is a Forced Dissoc
+         * - the new roam command is from an 802.11 OID
+         *   (OID_SSID or OID_BSSID).
+         */
+        if ((pCommand && (pCommand->sessionId == pDupCommand->sessionId) &&
+              ((pCommand->command == pDupCommand->command) &&
+              /*
+               * This peermac check is requried for Softap/GO scenarios
+               * For STA scenario below OR check will suffice as pCommand
+               * will always be NULL for STA scenarios
+               */
+               (vos_mem_compare(pDupCommand->u.roamCmd.peerMac,
+                  pCommand->u.roamCmd.peerMac, sizeof(v_MACADDR_t))) &&
+                ((pCommand->u.roamCmd.roamReason ==
+                          pDupCommand->u.roamCmd.roamReason) ||
+                 (eCsrForcedDisassoc == pCommand->u.roamCmd.roamReason) ||
+                 (eCsrHddIssued == pCommand->u.roamCmd.roamReason)))) ||
+            /* OR if pCommand is NULL */
+            ((sessionId == pDupCommand->sessionId) &&
+             (eSmeCommandRoam == pDupCommand->command) &&
+             ((eCsrForcedDisassoc == eRoamReason) ||
+              (eCsrHddIssued == eRoamReason))))
         {
-            smsLog(pMac, LOGW, FL("   roamReason = %d"), pDupCommand->u.roamCmd.roamReason);
-            // Remove the 'stale' roam command from the pending list...
-            if(csrLLRemoveEntry( &pMac->sme.smeCmdPendingList, pEntry, LL_ACCESS_NOLOCK ))
-            {
+            smsLog(pMac, LOGW, FL("RoamReason = %d"),
+                           pDupCommand->u.roamCmd.roamReason);
+            /* Remove the 'stale' roam command from the pending list */
+            if (csrLLRemoveEntry(pList, pEntry, LL_ACCESS_NOLOCK))
                 csrLLInsertTail(&localList, pEntry, LL_ACCESS_NOLOCK);
-            }
         }
         pEntry = pNextEntry;
     }
-    csrLLUnlock( &pMac->sme.smeCmdPendingList );
+    csrLLUnlock(pList);
 
-    while( (pEntry = csrLLRemoveHead(&localList, LL_ACCESS_NOLOCK)) )
+    while ((pEntry = csrLLRemoveHead(&localList, LL_ACCESS_NOLOCK)))
     {
         pDupCommand = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
-        //Tell caller that the command is cancelled
-        csrRoamCallCallback(pMac, pDupCommand->sessionId, NULL, pDupCommand->u.roamCmd.roamId,
-                                            eCSR_ROAM_CANCELLED, eCSR_ROAM_RESULT_NONE);
+        /* Tell caller that the command is cancelled */
+        csrRoamCallCallback(pMac, pDupCommand->sessionId, NULL,
+                    pDupCommand->u.roamCmd.roamId,
+                    eCSR_ROAM_CANCELLED, eCSR_ROAM_RESULT_NONE);
         csrReleaseCommandRoam(pMac, pDupCommand);
     }
     csrLLClose(&localList);
 }
+
+/**
+ * csrRoamRemoveDuplicateCommand()- Remove duplicate roam cmd
+ * from pending lists.
+ *
+ * @pMac: pointer to global mac
+ * @sessionId: session id for the cmd
+ * @pCommand: cmd to be removed, can be null
+ * @eRoamReason: cmd with reason to be removed
+ *
+ * Remove duplicate command from the sme and roam pending list.
+ *
+ * Return: void
+ */
+void csrRoamRemoveDuplicateCommand(tpAniSirGlobal pMac,
+                 tANI_U32 sessionId, tSmeCmd *pCommand,
+                 eCsrRoamReason eRoamReason)
+{
+    /* Always lock active list before locking pending lists */
+    csrLLLock(&pMac->sme.smeCmdActiveList);
+    csr_roam_remove_duplicate_cmd_from_list(pMac,
+       sessionId, &pMac->sme.smeCmdPendingList,
+       pCommand, eRoamReason);
+    csr_roam_remove_duplicate_cmd_from_list(pMac,
+       sessionId, &pMac->roam.roamCmdPendingList,
+       pCommand, eRoamReason);
+    csrLLUnlock(&pMac->sme.smeCmdActiveList);
+}
+
 eHalStatus csrRoamCallCallback(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamInfo *pRoamInfo, 
                                tANI_U32 roamId, eRoamCmdStatus u1, eCsrRoamResult u2)
 {
@@ -2801,8 +2846,12 @@ eHalStatus csrRoamIssueDisassociate( tpAniSirGlobal pMac, tANI_U32 sessionId,
     \return eHalStatus
   ---------------------------------------------------------------------------*/
 eHalStatus csrRoamIssueDisassociateStaCmd( tpAniSirGlobal pMac, 
-                                           tANI_U32 sessionId, 
+                                           tANI_U32 sessionId,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,18,0))
+                                           const tANI_U8 *pPeerMacAddr,
+#else
                                            tANI_U8 *pPeerMacAddr,
+#endif
                                            tANI_U32 reason)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
@@ -12487,7 +12536,11 @@ eHalStatus csrRoamSetPMKIDCache( tpAniSirGlobal pMac, tANI_U32 sessionId,
 }
 
 eHalStatus csrRoamDelPMKIDfromCache( tpAniSirGlobal pMac, tANI_U32 sessionId,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,18,0))
+                                     const tANI_U8 *pBSSId,
+#else
                                      tANI_U8 *pBSSId,
+#endif
                                      tANI_BOOLEAN flush_cache )
 {
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
@@ -15365,6 +15418,8 @@ eHalStatus csrSendMBStatsReqMsg( tpAniSirGlobal pMac, tANI_U32 statsMask, tANI_U
 {
    tAniGetPEStatsReq *pMsg;
    eHalStatus status = eHAL_STATUS_SUCCESS;
+   tSirMsgQ msgQ;
+
    pMsg = vos_mem_malloc(sizeof(tAniGetPEStatsReq));
    if ( NULL == pMsg )
    {
@@ -15372,14 +15427,20 @@ eHalStatus csrSendMBStatsReqMsg( tpAniSirGlobal pMac, tANI_U32 statsMask, tANI_U
       return eHAL_STATUS_FAILURE;
    }
    // need to initiate a stats request to PE
-   pMsg->msgType = pal_cpu_to_be16((tANI_U16)eWNI_SME_GET_STATISTICS_REQ);
+   pMsg->msgType = pal_cpu_to_be16((tANI_U16)WDA_GET_STATISTICS_REQ);
    pMsg->msgLen = (tANI_U16)sizeof(tAniGetPEStatsReq);
    pMsg->staId = staId;
    pMsg->statsMask = statsMask;
-   status = palSendMBMessage(pMac->hHdd, pMsg );    
+
+   msgQ.type = WDA_GET_STATISTICS_REQ;
+   msgQ.reserved = 0;
+   msgQ.bodyptr = pMsg;
+   msgQ.bodyval = 0;
+   status = wdaPostCtrlMsg(pMac, &msgQ);
    if(!HAL_STATUS_SUCCESS(status))
    {
       smsLog(pMac, LOG1, FL("Failed to send down the stats req "));
+      vos_mem_free(pMsg);
    }
    return status;
 }

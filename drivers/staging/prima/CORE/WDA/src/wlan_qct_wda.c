@@ -2276,6 +2276,21 @@ VOS_STATUS WDA_prepareConfigTLV(v_PVOID_t pVosContext,
    tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
                            + sizeof(tHalCfg) + tlvStruct->length) ;
 
+   /* QWLAN_HAL_CFG_SAR_BOFFSET_CORRECTION_ENABLE */
+   tlvStruct->type = QWLAN_HAL_CFG_SAR_BOFFSET_CORRECTION_ENABLE;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+
+   if (wlan_cfgGetInt(pMac, WNI_CFG_SAR_BOFFSET_SET_CORRECTION,
+                         configDataValue ) != eSIR_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+               "Failed to get value for WNI_CFG_SAR_BOFFSET_SET_CORRECTION");
+      goto handle_failure;
+   }
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
+                           + sizeof(tHalCfg) + tlvStruct->length) ;
+
    wdiStartParams->usConfigBufferLen = (tANI_U8 *)tlvStruct - tlvStructStart ;
 #ifdef WLAN_DEBUG
    {
@@ -6176,8 +6191,8 @@ void WDA_GetStatsReqParamsCallback(
                               WDI_GetStatsRspParamsType *wdiGetStatsRsp,
                               void* pUserData)
 {
-   tWDA_CbContext *pWDA = (tWDA_CbContext *)pUserData ;
    tAniGetPEStatsRsp *pGetPEStatsRspParams;
+   vos_msg_t vosMsg;
 
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "<------ %s " ,__func__);
@@ -6193,7 +6208,7 @@ void WDA_GetStatsReqParamsCallback(
       return;
    }
    vos_mem_set(pGetPEStatsRspParams, wdiGetStatsRsp->usMsgLen, 0);
-   pGetPEStatsRspParams->msgType = wdiGetStatsRsp->usMsgType;
+   pGetPEStatsRspParams->msgType = eWNI_SME_GET_STATISTICS_RSP;
    pGetPEStatsRspParams->msgLen = sizeof(tAniGetPEStatsRsp) + 
                    (wdiGetStatsRsp->usMsgLen - sizeof(WDI_GetStatsRspParamsType));
 
@@ -6206,8 +6221,17 @@ void WDA_GetStatsReqParamsCallback(
    vos_mem_copy( pGetPEStatsRspParams + 1,
                   wdiGetStatsRsp + 1,
                   wdiGetStatsRsp->usMsgLen - sizeof(WDI_GetStatsRspParamsType));
-  /* send response to UMAC*/
-   WDA_SendMsg(pWDA, WDA_GET_STATISTICS_RSP, pGetPEStatsRspParams , 0) ;
+
+   vosMsg.type = eWNI_SME_GET_STATISTICS_RSP;
+   vosMsg.bodyptr = (void *)pGetPEStatsRspParams;
+   vosMsg.bodyval = 0;
+   if (VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MQ_ID_SME,
+                                (vos_msg_t*)&vosMsg))
+   {
+       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: fail to post eWNI_SME_GET_STATISTICS_RSP", __func__);
+       vos_mem_free(pGetPEStatsRspParams);
+   }
    
    return;
 }
@@ -6222,6 +6246,8 @@ VOS_STATUS WDA_ProcessGetStatsReq(tWDA_CbContext *pWDA,
    WDI_Status status = WDI_STATUS_SUCCESS ;
    WDI_GetStatsReqParamsType wdiGetStatsParam;
    tAniGetPEStatsRsp *pGetPEStatsRspParams;
+   vos_msg_t vosMsg;
+
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "------> %s " ,__func__);
    wdiGetStatsParam.wdiGetStatsParamsInfo.ucSTAIdx = 
@@ -6245,12 +6271,21 @@ VOS_STATUS WDA_ProcessGetStatsReq(tWDA_CbContext *pWDA,
           vos_mem_free(pGetStatsParams);
           return VOS_STATUS_E_NOMEM;
       }
-      pGetPEStatsRspParams->msgType = WDA_GET_STATISTICS_RSP;
+      pGetPEStatsRspParams->msgType = eWNI_SME_GET_STATISTICS_RSP;
       pGetPEStatsRspParams->msgLen = sizeof(tAniGetPEStatsRsp);
       pGetPEStatsRspParams->staId = pGetStatsParams->staId;
       pGetPEStatsRspParams->rc    = eSIR_FAILURE;
-      WDA_SendMsg(pWDA, WDA_GET_STATISTICS_RSP, 
-                                 (void *)pGetPEStatsRspParams, 0) ;
+
+      vosMsg.type = eWNI_SME_GET_STATISTICS_RSP;
+      vosMsg.bodyptr = (void *)pGetPEStatsRspParams;
+      vosMsg.bodyval = 0;
+      if (VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MQ_ID_SME,
+                                    (vos_msg_t*)&vosMsg))
+      {
+          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                    "%s: fail to post eWNI_SME_GET_STATISTICS_RSP", __func__);
+          vos_mem_free(pGetPEStatsRspParams);
+      }
    }
    /* Free the request message */
    vos_mem_free(pGetStatsParams);
@@ -13273,7 +13308,7 @@ VOS_STATUS WDA_TxComplete( v_PVOID_t pVosContext, vos_pkt_t *pData,
    
    tWDA_CbContext *wdaContext= (tWDA_CbContext *)VOS_GET_WDA_CTXT(pVosContext);
    tpAniSirGlobal pMac = (tpAniSirGlobal)VOS_GET_MAC_CTXT((void *)pVosContext) ;
-   tANI_U32 uUserData; 
+   tANI_U64 uUserData;
 
    VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO, "Enter:%s", __func__);
 
@@ -17948,6 +17983,27 @@ void WDA_TransportChannelDebug
    WDI_TransportChannelDebug(displaySnapshot, debugFlags);
    return;
 }
+
+/*==========================================================================
+  FUNCTION   WDA_TransportKickDxe
+
+  DESCRIPTION
+    Request Kick Dxe when first hdd TX time out
+    happens
+
+  PARAMETERS
+    NONE
+
+  RETURN VALUE
+    NONE
+
+===========================================================================*/
+void WDA_TransportKickDxe()
+{
+   WDI_TransportKickDxe();
+   return;
+}
+
 
 /*==========================================================================
   FUNCTION   WDA_SetEnableSSR
