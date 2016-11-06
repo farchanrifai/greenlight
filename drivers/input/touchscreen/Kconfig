@@ -112,7 +112,6 @@ config TOUCHSCREEN_ATMEL_MXT
 	  To compile this driver as a module, choose M here: the
 	  module will be called atmel_mxt_ts.
 
-
 config TOUCHSCREEN_ST_FTS
         tristate "ST FTS I2C Touchscreen"
         depends on I2C

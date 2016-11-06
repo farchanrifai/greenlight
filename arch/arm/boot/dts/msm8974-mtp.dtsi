@@ -122,6 +122,7 @@
 				atmel,build = <0x00>;
 				atmel,mxt-cfg-name = "mxt_double_diamond_config.fw";
 				atmel,vendor-id = <0x00>;
+				atmel,rev-id = <0x00>;
 				atmel,lcd-id = <0x00>;
 				atmel,key-codes = <139 102 158>;
 				atmel,key-num = <3>;
@@ -146,6 +147,7 @@
 				atmel,build = <0x00>;
 				atmel,mxt-cfg-name = "mxt_wintek_diamond_config_v20.fw";
 				atmel,vendor-id = <0x04>;
+				atmel,rev-id = <0x00>;
 				atmel,lcd-id = <0x00>;
 				atmel,key-codes = <158 102 139>;
 				atmel,key-num = <3>;
@@ -170,6 +172,7 @@
 				atmel,build = <0xAA>;
 				atmel,mxt-cfg-name = "mxt_wintek_diamond_config_v30_sharp.fw";
 				atmel,vendor-id = <0x04>;
+				atmel,rev-id = <0x00>;
 				atmel,lcd-id = <0x00>;
 				atmel,key-codes = <158 102 139>;
 				atmel,key-num = <3>;
@@ -194,6 +197,7 @@
 				atmel,build = <0xAA>;
 				atmel,mxt-cfg-name = "mxt_wintek_diamond_config_v30_lg.fw";
 				atmel,vendor-id = <0x04>;
+				atmel,rev-id = <0x00>;
 				atmel,lcd-id = <0x01>;
 				atmel,key-codes = <158 102 139>;
 				atmel,key-num = <3>;
