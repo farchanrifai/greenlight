@@ -112,17 +112,6 @@ config TOUCHSCREEN_ATMEL_MXT
 	  To compile this driver as a module, choose M here: the
 	  module will be called atmel_mxt_ts.
 
-config TOUCHSCREEN_ATMEL_640T
-        tristate "Atmel 640T I2C Touchscreen"
-        depends on I2C
-        help
-          Say Y here if you have Atmel T series I2C touchscreen,
-          such as 640T, connected to your system.
-
-          If unsure, say N.
-
-          To compile this driver as a module, choose M here: the
-          module will be called atmel_mxt_ts.
 
 config TOUCHSCREEN_ST_FTS
         tristate "ST FTS I2C Touchscreen"
@@ -1023,6 +1012,23 @@ config TOUCHSCREEN_GT9XX
 	  report 5 touches at a time.
 
           If unsure, say N.
+
+config TOUCHSCREEN_SWEEP2WAKE
+ 	tristate "Sweep2Wake for touchscreens"
+ 	select TOUCHSCREEN_PREVENT_SLEEP
+ 	default n
+
+config TOUCHSCREEN_DOUBLETAP2WAKE
+  	tristate "DoubleTap2Wake for touchscreens"
+  	select TOUCHSCREEN_PREVENT_SLEEP
+  	default n
+ 
+ config TOUCHSCREEN_PREVENT_SLEEP
+ 	bool "Inihibit sleep on modified touchscreen drivers"
+ 	default y
+ 	help
+ 	  This disables the sleep function of modified touchscreen drivers.
+ 
 
 source "drivers/input/touchscreen/gt9xx/Kconfig"
 
