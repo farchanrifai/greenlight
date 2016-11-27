@@ -109,12 +109,13 @@ function make_kernel {
 
 function make_zip {
 		cd $REPACK_DIR
-		zip -r ~/kernel/builds/Foxy-$ASSASIN_F-$(date +%d-%m_%H%M).zip *
+		cp -vr $ZIMAGE_DIR/$KERNEL $REPACK_DIR/zImage
+		zip -r ~/xero/Builds/Foxy-$ASSASIN_F-$(date +%d-%m_%H%M).zip *
 }
 
 function copy_modules {
 		echo "Copying modules"
-		find . -name '*.ko' -exec cp {} $REPACK_DIR/modules/ \;
+		find . -name '*.ko' -exec cp {} $REPACK_DIR/modules \;
 		echo "Stripping modules for size"
 		$STRIP --strip-unneeded $REPACK_DIR/modules/*.ko
 }
@@ -159,7 +160,6 @@ echo -e "${restore}"
 do
 case "$dchoice" in
 	y|Y)
-		make_kernel
 		if [ -e "arch/arm/boot/zImage" ]; then
 		make_dtb		
 		copy_modules
