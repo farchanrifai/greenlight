@@ -553,10 +553,6 @@ static int dwc3_gadget_start_config(struct dwc3 *dwc, struct dwc3_ep *dep)
 	ret = dwc3_send_gadget_ep_cmd(dwc, 0, cmd, &params);
 	if (ret)
 		return ret;
-
-	for (i = 0; i < DWC3_ENDPOINTS_NUM; i++) {
-		struct dwc3_ep *dep = dwc->eps[i];
-
 		if (!dep)
 			continue;
 
@@ -668,7 +664,11 @@ static int __dwc3_gadget_ep_enable(struct dwc3_ep *dep,
 		struct dwc3_trb	*trb_st_hw;
 		struct dwc3_trb	*trb_link;
 
+<<<<<<< HEAD
 		dep->endpoint.desc = desc;
+=======
+		dep->desc = desc;
+>>>>>>> bf6ef2d36c862e21bfd26497eab9b39f5c11f157
 		dep->comp_desc = comp_desc;
 		dep->type = usb_endpoint_type(desc);
 		dep->flags |= DWC3_EP_ENABLED;
@@ -1919,6 +1919,7 @@ static int dwc3_gadget_start(struct usb_gadget *g,
 	reg = dwc3_readl(dwc->regs, DWC3_DCFG);
 	reg &= ~(DWC3_DCFG_SPEED_MASK);
 
+<<<<<<< HEAD
 	/**
 	 * WORKAROUND: DWC3 revision < 2.20a have an issue
 	 * which would cause metastability state on Run/Stop
@@ -1938,6 +1939,8 @@ static int dwc3_gadget_start(struct usb_gadget *g,
 		reg |= dwc->maximum_speed;
 	dwc3_writel(dwc->regs, DWC3_DCFG, reg);
 
+=======
+>>>>>>> bf6ef2d36c862e21bfd26497eab9b39f5c11f157
 	/* Start with SuperSpeed Default */
 	dwc3_gadget_ep0_desc.wMaxPacketSize = cpu_to_le16(512);
 
