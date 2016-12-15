@@ -35,7 +35,6 @@ inline unsigned long int_sqrt(unsigned long x)
 	}while (place != 0);
 
 	return root;
->>>>>>> bf49d5a... Optimized Integer SQRT. for upto 3x faster operation
 }
 EXPORT_SYMBOL(int_sqrt);
 
