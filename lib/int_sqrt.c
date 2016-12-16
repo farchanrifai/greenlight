@@ -33,7 +33,7 @@ unsigned long int_sqrt(unsigned long x)
 		m >>= 2;
 	}
 
-	return root;
+	return y;
 }
 EXPORT_SYMBOL(int_sqrt);
 
