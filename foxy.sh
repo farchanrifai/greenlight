@@ -111,7 +111,7 @@ function make_kernel {
 function make_zip {
 		cd $REPACK_DIR
 		cp -vr $ZIMAGE_DIR/$KERNEL $REPACK_DIR/zImage
-		zip -r ~/xero/Builds/Foxy-cancro-$FOXY_F-$(date +%d-%m_%H%M).zip *
+		zip -r ~/xero/Builds/$FOXY_F/Foxy-cancro-$FOXY_F-$(date +%d-%m_%H%M).zip *
 }
 
 function copy_modules {
