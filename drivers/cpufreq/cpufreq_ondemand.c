@@ -27,6 +27,9 @@
 #include <linux/input.h>
 #include <linux/workqueue.h>
 #include <linux/slab.h>
+#include <mach/kgsl.h>
+
+static int old_up_threshold;
 
 /*
  * dbs is used in this file as a shortform for demandbased switching
@@ -146,6 +149,7 @@ static struct dbs_tuners {
 	int          powersave_bias;
 	unsigned int io_is_busy;
 	unsigned int input_boost;
+	int gboost;
 } dbs_tuners_ins = {
 	.up_threshold_multi_core = DEF_FREQUENCY_UP_THRESHOLD,
 	.up_threshold = DEF_FREQUENCY_UP_THRESHOLD,
@@ -158,6 +162,7 @@ static struct dbs_tuners {
 	.sync_freq = 0,
 	.optimal_freq = 0,
 	.input_boost = 0,
+	.gboost = 1,
 };
 
 static inline cputime64_t get_cpu_iowait_time(unsigned int cpu, cputime64_t *wall)
@@ -290,6 +295,7 @@ show_one(optimal_freq, optimal_freq);
 show_one(up_threshold_any_cpu_load, up_threshold_any_cpu_load);
 show_one(sync_freq, sync_freq);
 show_one(input_boost, input_boost);
+show_one(gboost, gboost);
 
 static ssize_t show_powersave_bias
 (struct kobject *kobj, struct attribute *attr, char *buf)
@@ -669,6 +675,19 @@ skip_this_cpu_bypass:
 	return count;
 }
 
+static ssize_t store_gboost(struct kobject *a, struct attribute *b,
+				const char *buf, size_t count)
+{
+	unsigned int input;
+	int ret;
+
+	ret = sscanf(buf, "%u", &input);
+	if(ret != 1)
+		return -EINVAL;
+	dbs_tuners_ins.gboost = (input > 0 ? input : 0);
+	return count;
+}
+
 define_one_global_rw(sampling_rate);
 define_one_global_rw(io_is_busy);
 define_one_global_rw(up_threshold);
@@ -682,6 +701,7 @@ define_one_global_rw(optimal_freq);
 define_one_global_rw(up_threshold_any_cpu_load);
 define_one_global_rw(sync_freq);
 define_one_global_rw(input_boost);
+define_one_global_rw(gboost);
 
 static struct attribute *dbs_attributes[] = {
 	&sampling_rate_min.attr,
@@ -698,6 +718,7 @@ static struct attribute *dbs_attributes[] = {
 	&up_threshold_any_cpu_load.attr,
 	&sync_freq.attr,
 	&input_boost.attr,
+	&gboost.attr,
 	NULL
 };
 
@@ -852,6 +873,16 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 				dbs_tuners_ins.sampling_down_factor;
 		dbs_freq_increase(policy, policy->max);
 		return;
+	}
+
+	//graphics boost
+	if (graphics_boost && dbs_tuners_ins.gboost) {
+		if (dbs_tuners_ins.up_threshold != 49)
+			old_up_threshold = dbs_tuners_ins.up_threshold;
+		dbs_tuners_ins.up_threshold = 49;
+	} else {
+		if (dbs_tuners_ins.up_threshold == 49)
+			dbs_tuners_ins.up_threshold = old_up_threshold;
 	}
 
 	if (num_online_cpus() > 1) {

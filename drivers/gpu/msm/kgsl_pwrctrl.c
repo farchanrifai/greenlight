@@ -45,6 +45,8 @@
 #define INIT_UDELAY		200
 #define MAX_UDELAY		2000
 
+int graphics_boost = 0;
+
 struct clk_pair {
 	const char *name;
 	uint map;
@@ -208,6 +210,11 @@ void kgsl_pwrctrl_pwrlevel_change(struct kgsl_device *device,
 
 
 	trace_kgsl_pwrlevel(device, pwr->active_pwrlevel, pwrlevel->gpu_freq);
+
+	if (pwr->active_pwrlevel == 0)
+ 		graphics_boost = 1;
+ 	else
+ 		graphics_boost = 0;
 }
 
 EXPORT_SYMBOL(kgsl_pwrctrl_pwrlevel_change);
