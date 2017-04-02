@@ -44,6 +44,7 @@ modules.builtin
 /System.map
 /Module.markers
 /Module.symvers
+/zip
 
 #
 # Debian directory (make deb-pkg)
@@ -70,6 +71,7 @@ patches-*
 # quilt's files
 patches
 series
+gas.sh
 
 # cscope files
 cscope.*
