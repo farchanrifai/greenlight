@@ -762,22 +762,6 @@ static u8 mxt_read_chg(struct mxt_data *data)
 	return val;
 }
 
-static void mxt_disable_irq(struct mxt_data *data)
-{
-	if (likely(data->irq_enabled)) {
-		disable_irq(data->irq);
-		data->irq_enabled = false;
-	}
-}
-
-static void mxt_enable_irq(struct mxt_data *data)
-{
-	if (likely(!data->irq_enabled)) {
-		enable_irq(data->irq);
-		data->irq_enabled = true;
-	}
-}
-
 static int mxt_wait_for_chg(struct mxt_data *data)
 {
 	int timeout_counter = 0;
