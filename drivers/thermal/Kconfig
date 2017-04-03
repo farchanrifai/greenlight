@@ -117,11 +117,3 @@ config THERMAL_QPNP_ADC_TM
 	  Disabling the thermal zone device via the mode file results in disabling
 	  the sensor. Also able to set threshold temperature for both hot and cold
 	  and update when a threshold is reached.
-
-config INTELLI_THERMAL_V2
-	bool "Better thermal monitor for MSM"
-	depends on THERMAL_TSENS8974
-	depends on CPU_FREQ_MSM
-	default n
-	help
-
