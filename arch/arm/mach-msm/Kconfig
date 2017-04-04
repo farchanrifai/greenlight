@@ -1145,7 +1145,6 @@ config MACH_FSM9XXX_SURF
 	  Support for the Qualcomm FSM9xxx femtocell
 	  chipset based SURF evaluation board and
 	  FFA board.
-
 endmenu
 
 config MSM_STACKED_MEMORY
@@ -3107,5 +3106,4 @@ config KERNEL_TEXT_MPU_PROT
 	 sections early in boot. Read access is permitted to
 	 all masters; Write access is only permited to the
 	 secure world.
-
 endif
