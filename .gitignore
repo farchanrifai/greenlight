@@ -72,6 +72,8 @@ patches-*
 patches
 series
 gas.sh
+build.log
+xmlog
 
 # cscope files
 cscope.*
