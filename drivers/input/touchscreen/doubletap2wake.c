@@ -69,15 +69,15 @@ MODULE_LICENSE("GPLv2");
 #define DT2W_DEFAULT			1
 
 #define DT2W_PWRKEY_DUR			60
-#define DT2W_FEATHER			200
-#define DT2W_TIME				700
+#define DT2W_FEATHER			150
+#define DT2W_TIME				150
 
 #if defined(CONFIG_ARCH_MSM8974)
 #define DT2W_X_MAX				1080
 #define DT2W_Y_LIMIT			1920
 #elif defined(CONFIG_MACH_PICO)
 #define DT2W_X_MAX				1024
-#define DT2W_Y_LIMIT			910
+#define DT2W_Y_LIMIT			500
 #else
 /* defaults */
 #define DT2W_X_MAX				1540

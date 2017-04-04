@@ -69,8 +69,8 @@ MODULE_LICENSE("GPLv2");
 #define S2W_Y_NEXT              180
 #else
 /* defaults */
-#define S2W_Y_LIMIT             2350
-#define S2W_X_MAX               1540
+#define S2W_Y_LIMIT             1920
+#define S2W_X_MAX               1080
 #define S2W_X_B1                500
 #define S2W_X_B2                1000
 #define S2W_X_FINAL             300
@@ -84,7 +84,7 @@ MODULE_LICENSE("GPLv2");
 #define SWEEP_LEFT		0x02
 #define SWEEP_UP		0x04
 #define SWEEP_DOWN		0x08
-#define VIB_STRENGTH		20
+#define VIB_STRENGTH		35
 
 int gestures_switch = S2W_DEFAULT;
 static struct input_dev *gesture_dev;
