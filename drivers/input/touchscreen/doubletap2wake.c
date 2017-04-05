@@ -70,7 +70,7 @@ MODULE_LICENSE("GPLv2");
 
 #define DT2W_PWRKEY_DUR			60
 #define DT2W_FEATHER			150
-#define DT2W_TIME				150
+#define DT2W_TIME				250
 
 #if defined(CONFIG_ARCH_MSM8974)
 #define DT2W_X_MAX				1080
