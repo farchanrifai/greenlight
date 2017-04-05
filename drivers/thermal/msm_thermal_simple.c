@@ -505,7 +505,7 @@ static struct platform_driver msm_thermal_device = {
 	.probe = msm_thermal_probe,
 	.driver = {
 		.name = "msm-thermal-simple",
-		.owner = THIS_MODULE,
+		//.owner = THIS_MODULE,
 		.of_match_table = msm_thermal_match_table,
 	},
 };
