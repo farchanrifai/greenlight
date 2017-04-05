@@ -3436,36 +3436,6 @@ static ssize_t mxt_pause_store(struct device *dev,
 	}
 }
 
-static ssize_t mxt_keys_off_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct mxt_data *data = dev_get_drvdata(dev);
-	int count;
-	char c;
-
-	c = data->keys_off ? '1' : '0';
-	count = sprintf(buf, "%c\n", c);
-
-	return count;
-}
-
-static ssize_t mxt_keys_off_store(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct mxt_data *data = dev_get_drvdata(dev);
-	int i;
-
-	if (sscanf(buf, "%u", &i) == 1 && i < 2) {
-		data->keys_off = (i == 1);
-
-		dev_dbg(dev, "%s\n", i ? "hw keys off" : "hw keys on");
-		return count;
-	} else {
-		dev_dbg(dev, "keys_off write error\n");
-		return -EINVAL;
-	}
-}
-
 static ssize_t mxt_debug_enable_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
