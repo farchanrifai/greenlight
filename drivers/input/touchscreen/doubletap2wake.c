@@ -519,4 +519,3 @@ static void __exit doubletap2wake_exit(void)
 
 module_init(doubletap2wake_init);
 module_exit(doubletap2wake_exit);
-
