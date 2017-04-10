@@ -98,7 +98,7 @@ export KBUILD_BUILD_HOST="WTF!!"
 ###########################################################################
 # Paths
 #STRIP=/toolchain-path/arm-eabi-strip
-STRIP=$COMPILER/arm-eabi-strip
+STRIP=$COMPILER/bin/arm-eabi-strip
 KERNEL_DIR=`pwd`
 REPACK_DIR="$KERNEL_DIR/zip/$SKYMO_F/kernel_zip"
 DTBTOOL_DIR="$KERNEL_DIR/zip"
@@ -142,6 +142,7 @@ function make_kernel {
 function skymo {
 		echo "Make dtb & zip"
 		for i in `find -name *.ko`; do cp $i ~/xero/AnyKernel2/modules/; done
+		$STRIP --strip-unneeded ~/xero/AnyKernel2/modules/*.ko
 		$DTBTOOL_DIR/dtbToolCM -s 2048 -d "qcom,msm-id = <" -2 -o arch/arm/boot/dt.img -p /usr/bin/ arch/arm/boot/
 		cp arch/arm/boot/zImage ~/xero/AnyKernel2/
 		cp arch/arm/boot/dt.img ~/xero/AnyKernel2/
