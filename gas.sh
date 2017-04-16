@@ -136,11 +136,11 @@ function make_kernel {
 		echo
 		make $DEFCONFIG
 		make $THREAD $OPT 2>&1 | tee build.log
-		cp -vr $ZIMAGE_DIR/$KERNEL $REPACK_DIR/zImage
 }
 
 function skymo {
 		echo "Make dtb & zip"
+		rm ~/xero/AnyKernel2/modules/*.ko
 		for i in `find -name *.ko`; do cp $i ~/xero/AnyKernel2/modules/; done
 		$STRIP --strip-unneeded ~/xero/AnyKernel2/modules/*.ko
 		$DTBTOOL_DIR/dtbToolCM -s 2048 -d "qcom,msm-id = <" -2 -o arch/arm/boot/dt.img -p /usr/bin/ arch/arm/boot/
