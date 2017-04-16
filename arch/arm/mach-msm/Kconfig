@@ -1859,7 +1859,7 @@ config MSM_DALRPC_TEST
 
 config ALUCARD_HOTPLUG
 	bool "Enable alucard-hotplug cpu hotplug driver"
-	default n
+	default y
  	help
 	Generic Alucard-hotplug cpu hotplug driver for ARM SOCs
 
@@ -3087,14 +3087,14 @@ config MSM_HOTPLUG
 config BRICKED_HOTPLUG
 	bool "Enable kernel based mpdecision"
 	depends on MSM_RUN_QUEUE_STATS
-	default y
+	default n
 	help
 	  This enables kernel based multi core control.
 	  (up/down hotplug based on load)
 
 config MSM_LIMITER
 	bool "MSM Frequency Limiter Driver"
-	default y
+	default n
 	help
 	  The MSM Frequency Limiter Driver controls max frequency limit for each CPU
 	  to desired value on suspend/resume
@@ -3106,4 +3106,5 @@ config KERNEL_TEXT_MPU_PROT
 	 sections early in boot. Read access is permitted to
 	 all masters; Write access is only permited to the
 	 secure world.
+
 endif
