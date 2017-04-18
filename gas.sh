@@ -38,12 +38,12 @@ KERNEL="zImage"
 OPT="CONFIG_NO_ERROR_ON_MISMATCH=y"
 DTBIMAGE="dt.img"
 device="cancro"
-COMPILER="/home/farchan/arm-eabi-5.3/bin"
+COMPILER="/home/farchan/ubertc-5.3/bin"
 
 ###########################################################################
 # Directory naming
 echo -e "${bldblu}"
-#echo "Select Skymo versioo"
+#echo "Select Skymo version"
 #echo "1. DTTW & S2W"
 #echo "2. NO DTTW & S2W"
 while read -p "Select Skymo version
@@ -101,7 +101,7 @@ export KBUILD_BUILD_HOST="WTF!!"
 STRIP=$COMPILER/bin/arm-eabi-strip
 KERNEL_DIR=`pwd`
 REPACK_DIR="$KERNEL_DIR/zip/$SKYMO_F/kernel_zip"
-DTBTOOL_DIR="$KERNEL_DIR/zip"
+DTBTOOL_DIR="$KERNEL_DIR/scripts"
 ZIMAGE_DIR="$KERNEL_DIR/arch/arm/boot"
 
 ###########################################################################
@@ -116,18 +116,18 @@ function clean_all {
 }
 
 function alamat {
-		cd ~/xero/Builds/skymo
+		cd ~/android/Builds
 		mkdir -p $DIR/$TGL
 		cd $DIR	
-		COUNT=`ls ~/xero/Builds/skymo/$DIR/$TGL -l | wc -l`
+		COUNT=`ls ~/android/Builds/$DIR/$TGL -l | wc -l`
 		NUMBER=$(($COUNT +1))
 		NUMB="#$NUMBER"
 }
 
 
 function count {
-		cd ~xero/Builds/skymo
-		COUNT=`ls ~/xero/Builds/skymo -l | wc -l`
+		cd ~android/Builds
+		COUNT=`ls ~/android/Builds -l | wc -l`
 		NUMBER=$(($COUNT +1))
 		NUMB="#$NUMBER"
 }
@@ -140,17 +140,16 @@ function make_kernel {
 
 function skymo {
 		echo "Make dtb & zip"
-		rm ~/xero/AnyKernel2/modules/*.ko
-		for i in `find -name *.ko`; do cp $i ~/xero/AnyKernel2/modules/; done
-		$STRIP --strip-unneeded ~/xero/AnyKernel2/modules/*.ko
+		for i in `find -name *.ko`; do cp $i ~/android/AnyKernel2/modules/; done
+		$STRIP --strip-unneeded ~/android/AnyKernel2/modules/*.ko
 		$DTBTOOL_DIR/dtbToolCM -s 2048 -d "qcom,msm-id = <" -2 -o arch/arm/boot/dt.img -p /usr/bin/ arch/arm/boot/
-		cp arch/arm/boot/zImage ~/xero/AnyKernel2/
-		cp arch/arm/boot/dt.img ~/xero/AnyKernel2/
-		cd ~/xero/AnyKernel2
+		cp arch/arm/boot/zImage ~/android/AnyKernel2/
+		cp arch/arm/boot/dt.img ~/android/AnyKernel2/
+		cd ~/android/AnyKernel2
 		DATE=$(date +"%d%m%y")
 		rm *.zip
 		zip -r9 $SKYMO-$DATE-$NUMB.zip * -x README $SKYMO-$DATE-$NUMB.zip
-		cp *.zip ~/xero/Builds/skymo/$DIR/$TGL
+		cp *.zip ~/android/Builds/$DIR/$TGL
 }
 
 ###########################################################################
