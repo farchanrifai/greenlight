@@ -222,7 +222,7 @@ static void __ref decide_hotplug_func(struct work_struct *work)
 	}
 
 	for (cpu = 0; cpu < 2; cpu++)
-		cur_load += cpufreq_quick_get_util(cpu);
+	//	cur_load += cpufreq_quick_get_util(cpu);
 
 	cur_load >>= 1;
 
@@ -269,12 +269,12 @@ static void mako_hotplug_late_resume(struct early_suspend *handler)
 	queue_work_on(0, wq, &resume);
 }
 
-static struct early_suspend early_suspend =
+/*static struct early_suspend early_suspend =
 {
 	.level = EARLY_SUSPEND_LEVEL_DISABLE_FB,
 	.suspend = mako_hotplug_early_suspend,
 	.resume = mako_hotplug_late_resume,
-};
+};*/
 
 /*
  * Sysfs get/set entries start
