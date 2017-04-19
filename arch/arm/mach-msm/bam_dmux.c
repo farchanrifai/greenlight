@@ -45,17 +45,17 @@
 
 #define LOW_WATERMARK		2
 #define HIGH_WATERMARK		4
-#define DEFAULT_POLLING_MIN_SLEEP (950)
+#define DEFAULT_POLLING_MIN_SLEEP (1000)
 #define MAX_POLLING_SLEEP (6050)
 #define MIN_POLLING_SLEEP (950)
 
 static int msm_bam_dmux_debug_enable;
 module_param_named(debug_enable, msm_bam_dmux_debug_enable,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
-static int POLLING_MIN_SLEEP = 2950;
+static int POLLING_MIN_SLEEP = 4950;
 module_param_named(min_sleep, POLLING_MIN_SLEEP,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
-static int POLLING_MAX_SLEEP = 3050;
+static int POLLING_MAX_SLEEP = 5000;
 module_param_named(max_sleep, POLLING_MAX_SLEEP,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
 static int POLLING_INACTIVITY = 1;
@@ -1606,7 +1606,7 @@ static void ul_timeout(struct work_struct *work)
 		return;
 	ret = write_trylock_irqsave(&ul_wakeup_lock, flags);
 	if (!ret) { /* failed to grab lock, reschedule and bail */
-		schedule_delayed_work(&ul_timeout_work,
+		queue_delayed_work(system_power_efficient_wq, &ul_timeout_work,
 				msecs_to_jiffies(UL_TIMEOUT_DELAY));
 		return;
 	}
@@ -1630,7 +1630,7 @@ static void ul_timeout(struct work_struct *work)
 			BAM_DMUX_LOG("%s: pkt written %d\n",
 				__func__, ul_packet_written);
 			ul_packet_written = 0;
-			schedule_delayed_work(&ul_timeout_work,
+			queue_delayed_work(system_power_efficient_wq, &ul_timeout_work,
 					msecs_to_jiffies(UL_TIMEOUT_DELAY));
 		} else {
 			ul_powerdown();
@@ -1654,8 +1654,10 @@ static int ssrestart_check(void)
 								__func__);
 	in_global_reset = 1;
 	ret = subsystem_restart("modem");
-	if (ret == -ENODEV)
-		panic("modem subsystem restart failed\n");
+	if (ret == -ENODEV) {
+		DMUX_LOG_KERR("%s: modem subsystem restart failed\n", __func__);
+		dump_stack();
+	}
 	return 1;
 }
 
@@ -1716,7 +1718,7 @@ static void ul_wakeup(void)
 		}
 		if (likely(do_vote_dfab))
 			vote_dfab();
-		schedule_delayed_work(&ul_timeout_work,
+		queue_delayed_work(system_power_efficient_wq, &ul_timeout_work,
 				msecs_to_jiffies(UL_TIMEOUT_DELAY));
 		bam_is_connected = 1;
 		mutex_unlock(&wakeup_lock);
@@ -1761,7 +1763,7 @@ static void ul_wakeup(void)
 
 	bam_is_connected = 1;
 	BAM_DMUX_LOG("%s complete\n", __func__);
-	schedule_delayed_work(&ul_timeout_work,
+	queue_delayed_work(system_power_efficient_wq, &ul_timeout_work,
 				msecs_to_jiffies(UL_TIMEOUT_DELAY));
 	mutex_unlock(&wakeup_lock);
 }
