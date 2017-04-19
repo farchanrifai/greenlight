@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -56,8 +56,8 @@ static int mdss_mdp_splash_alloc_memory(struct msm_fb_data_type *mfd,
 
 	rc = ion_map_iommu(mdata->iclient, sinfo->ion_handle,
 			mdss_get_iommu_domain(MDSS_IOMMU_DOMAIN_UNSECURE),
-			0, SZ_4K, 0, (unsigned long *)&sinfo->iova,
-				(unsigned long *)&buf_size, 0, 0);
+			0, SZ_4K, 0, &sinfo->iova,
+				&buf_size, 0, 0);
 	if (rc) {
 		pr_err("ion memory map failed\n");
 		goto imap_err;
@@ -109,7 +109,7 @@ static int mdss_mdp_splash_iommu_attach(struct msm_fb_data_type *mfd)
 {
 	struct iommu_domain *domain;
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
-	int rc;
+	int rc, ret;
 
 	/*
 	 * iommu dynamic attach for following conditions.
@@ -139,9 +139,9 @@ static int mdss_mdp_splash_iommu_attach(struct msm_fb_data_type *mfd)
 	if (rc) {
 		pr_debug("iommu memory mapping failed rc=%d\n", rc);
 	} else {
-		rc = mdss_iommu_attach(mdss_res);
-		if (rc) {
-			pr_debug("mdss iommu attach failed\n");
+		ret = mdss_iommu_ctrl(1);
+		if (IS_ERR_VALUE(ret)) {
+			pr_err("mdss iommu attach failed\n");
 			iommu_unmap(domain, mdp5_data->splash_mem_addr,
 						mdp5_data->splash_mem_size);
 		} else {
@@ -167,6 +167,8 @@ static void mdss_mdp_splash_unmap_splash_mem(struct msm_fb_data_type *mfd)
 
 		iommu_unmap(domain, mdp5_data->splash_mem_addr,
 						mdp5_data->splash_mem_size);
+		mdss_iommu_ctrl(0);
+
 		mfd->splash_info.iommu_dynamic_attached = false;
 	}
 }
@@ -246,12 +248,6 @@ int mdss_mdp_splash_cleanup(struct msm_fb_data_type *mfd,
 	}
 
 	mdss_mdp_footswitch_ctrl_splash(0);
-	if (!is_mdss_iommu_attached()) {
-		rc = mdss_iommu_attach(mdss_res);
-		if (rc)
-			pr_err("iommu attach failed rc=%d\n", rc);
-	}
-
 end:
 	return rc;
 }
@@ -470,7 +466,6 @@ static int mdss_mdp_splash_ctl_cb(struct notifier_block *self,
 
 	if (!sinfo->frame_done_count) {
 		mdss_mdp_splash_unmap_splash_mem(mfd);
-		mdss_mdp_splash_cleanup(mfd, false);
 	/* wait for 2 frame done events before releasing memory */
 	} else if (sinfo->frame_done_count > MAX_FRAME_DONE_COUNT_WAIT &&
 			sinfo->splash_thread) {
@@ -504,8 +499,8 @@ static int mdss_mdp_splash_thread(void *data)
 	}
 	unlock_fb_info(mfd->fbi);
 
-	mfd->bl_updated = true;
 	mutex_lock(&mfd->bl_lock);
+	mfd->bl_updated = true;
 	mdss_fb_set_backlight(mfd, mfd->panel_info->bl_max >> 1);
 	mutex_unlock(&mfd->bl_lock);
 

@@ -171,7 +171,6 @@ void *dst_alloc(struct dst_ops *ops, struct net_device *dev,
 	dst_init_metrics(dst, dst_default_metrics, true);
 	dst->expires = 0UL;
 	dst->path = dst;
-	dst->from = NULL;
 	RCU_INIT_POINTER(dst->_neighbour, NULL);
 #ifdef CONFIG_XFRM
 	dst->xfrm = NULL;
@@ -270,10 +269,11 @@ void dst_release(struct dst_entry *dst)
 {
 	if (dst) {
 		int newrefcnt;
+		unsigned short nocache = dst->flags & DST_NOCACHE;
 
 		newrefcnt = atomic_dec_return(&dst->__refcnt);
 		WARN_ON(newrefcnt < 0);
-		if (unlikely(dst->flags & DST_NOCACHE) && !newrefcnt) {
+		if (!newrefcnt && unlikely(nocache)) {
 			dst = dst_destroy(dst);
 			if (dst)
 				__dst_free(dst);

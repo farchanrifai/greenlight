@@ -44,7 +44,6 @@ static struct usb_interface_descriptor audio_source_ac_interface_desc = {
 	.bInterfaceSubClass =	USB_SUBCLASS_AUDIOCONTROL,
 };
 
-
 #define UAC_DT_AC_HEADER_LENGTH	UAC_DT_AC_HEADER_SIZE(AUDIO_NUM_INTERFACES)
 /* 1 input terminal, 1 output terminal and 1 feature unit */
 #define UAC_DT_TOTAL_LENGTH (UAC_DT_AC_HEADER_LENGTH \
@@ -826,7 +825,7 @@ static struct audio_dev _audio_dev = {
 		.set_alt = audio_set_alt,
 		.setup = audio_setup,
 		.disable = audio_disable,
-		.descriptors = fs_audio_desc,
+		.fs_descriptors = fs_audio_desc,
 		.hs_descriptors = hs_audio_desc,
 	},
 	.lock = __SPIN_LOCK_UNLOCKED(_audio_dev.lock),

@@ -2,7 +2,6 @@
  * Roccat Kone driver for Linux
  *
  * Copyright (c) 2010 Stefan Achatz <erazor_de@users.sourceforge.net>
- * Copyright (C) 2015 XiaoMi, Inc.
  */
 
 /*
@@ -139,7 +138,7 @@ static int kone_check_write(struct usb_device *usb_dev)
 		return 0;
 
 	/* unknown answer */
-	dev_err(&usb_dev->dev, "got retval %d when checking write\n", data);
+	hid_err(usb_dev, "got retval %d when checking write\n", data);
 	return -EIO;
 }
 
@@ -504,7 +503,7 @@ static ssize_t kone_sysfs_set_tcu(struct device *dev,
 
 		retval = kone_set_settings(usb_dev, &kone->settings);
 		if (retval) {
-			dev_err(&usb_dev->dev, "couldn't set tcu state\n");
+			hid_err(usb_dev, "couldn't set tcu state\n");
 			/*
 			 * try to reread valid settings into buffer overwriting
 			 * first error code
@@ -520,7 +519,7 @@ static ssize_t kone_sysfs_set_tcu(struct device *dev,
 
 	retval = size;
 exit_no_settings:
-	dev_err(&usb_dev->dev, "couldn't read settings\n");
+	hid_err(usb_dev, "couldn't read settings\n");
 exit_unlock:
 	mutex_unlock(&kone->kone_lock);
 	return retval;
@@ -819,9 +818,8 @@ static void kone_report_to_chrdev(struct kone_device const *kone,
 				(uint8_t *)&roccat_report);
 		break;
 	case kone_mouse_event_call_overlong_macro:
-	case kone_mouse_event_multimedia:
 		if (event->value == kone_keystroke_action_press) {
-			roccat_report.event = event->event;
+			roccat_report.event = kone_mouse_event_call_overlong_macro;
 			roccat_report.value = kone->actual_profile;
 			roccat_report.key = event->macro_key;
 			roccat_report_event(kone->chrdev_minor,

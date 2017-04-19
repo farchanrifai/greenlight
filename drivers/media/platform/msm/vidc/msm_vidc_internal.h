@@ -74,11 +74,6 @@ enum vidc_core_state {
 	VIDC_CORE_INVALID
 };
 
-enum vidc_calculation {
-	CLOCKS = 0,
-	LOAD
-};
-
 /*Donot change the enum values unless
  * you know what you are doing*/
 enum instance_state {
@@ -105,6 +100,17 @@ struct buf_info {
 	struct list_head list;
 	struct vb2_buffer *buf;
 };
+
+struct msm_vidc_list {
+	struct list_head list;
+	struct mutex lock;
+};
+
+static inline void INIT_MSM_VIDC_LIST(struct msm_vidc_list *mlist)
+{
+	mutex_init(&mlist->lock);
+	INIT_LIST_HEAD(&mlist->list);
+}
 
 enum buffer_owner {
 	DRIVER,
@@ -232,7 +238,7 @@ struct msm_vidc_inst {
 	int state;
 	struct msm_vidc_format *fmts[MAX_PORT_NUM];
 	struct buf_queue bufq[MAX_PORT_NUM];
-	struct list_head pendingq;
+	struct msm_vidc_list pendingq;
 	struct list_head internalbufs;
 	struct list_head persistbufs;
 	struct list_head outputbufs;
@@ -318,5 +324,6 @@ int qbuf_dynamic_buf(struct msm_vidc_inst *inst,
 			struct buffer_info *binfo);
 int unmap_and_deregister_buf(struct msm_vidc_inst *inst,
 			struct buffer_info *binfo);
+bool msm_smem_compare_buffers(void *clt, int fd, void *priv);
 void msm_vidc_fw_unload_handler(struct work_struct *work);
 #endif

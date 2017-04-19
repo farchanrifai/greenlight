@@ -5,7 +5,6 @@
  *  HID driver for Logitech Unifying receivers
  *
  *  Copyright (c) 2011 Logitech
- *  Copyright (C) 2015 XiaoMi, Inc.
  */
 
 /*

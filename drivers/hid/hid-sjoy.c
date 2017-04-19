@@ -6,7 +6,6 @@
  *  Based of hid-pl.c and hid-gaff.c
  *   Copyright (c) 2007, 2009 Anssi Hannula <anssi.hannula@gmail.com>
  *   Copyright (c) 2008 Lukasz Lubojanski <lukasz@lubojanski.info>
- *   Copyright (C) 2015 XiaoMi, Inc.
  */
 
 /*
@@ -29,11 +28,13 @@
 
 #include <linux/input.h>
 #include <linux/slab.h>
+#include <linux/usb.h>
 #include <linux/hid.h>
 #include <linux/module.h>
 #include "hid-ids.h"
 
 #ifdef CONFIG_SMARTJOYPLUS_FF
+#include "usbhid/usbhid.h"
 
 struct sjoyff_device {
 	struct hid_report *report;
@@ -56,7 +57,7 @@ static int hid_sjoyff_play(struct input_dev *dev, void *data,
 	sjoyff->report->field[0]->value[1] = right;
 	sjoyff->report->field[0]->value[2] = left;
 	dev_dbg(&dev->dev, "running with 0x%02x 0x%02x\n", left, right);
-	hid_hw_request(hid, sjoyff->report, HID_REQ_SET_REPORT);
+	usbhid_submit_report(hid, sjoyff->report, USB_DIR_OUT);
 
 	return 0;
 }
@@ -114,7 +115,7 @@ static int sjoyff_init(struct hid_device *hid)
 		sjoyff->report->field[0]->value[0] = 0x01;
 		sjoyff->report->field[0]->value[1] = 0x00;
 		sjoyff->report->field[0]->value[2] = 0x00;
-		hid_hw_request(hid, sjoyff->report, HID_REQ_SET_REPORT);
+		usbhid_submit_report(hid, sjoyff->report, USB_DIR_OUT);
 	}
 
 	hid_info(hid, "Force feedback for SmartJoy PLUS PS2/USB adapter\n");
@@ -176,8 +177,19 @@ static struct hid_driver sjoy_driver = {
 	.id_table = sjoy_devices,
 	.probe = sjoy_probe,
 };
-module_hid_driver(sjoy_driver);
 
+static int __init sjoy_init(void)
+{
+	return hid_register_driver(&sjoy_driver);
+}
+
+static void __exit sjoy_exit(void)
+{
+	hid_unregister_driver(&sjoy_driver);
+}
+
+module_init(sjoy_init);
+module_exit(sjoy_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Jussi Kivilinna");
 

@@ -53,7 +53,7 @@ static atomic_t g_bRuntimeRecord;
 
 #include "ImmVibeSPI.c"
 #if (defined(VIBE_DEBUG) && defined(VIBE_RECORD)) || defined(VIBE_RUNTIME_RECORD)
-#include "tspdrvRecorder.c"
+#include <tspdrvRecorder.c>
 #endif
 
 /* Device name and version information */

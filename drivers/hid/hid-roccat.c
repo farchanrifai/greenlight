@@ -2,7 +2,6 @@
  * Roccat driver for Linux
  *
  * Copyright (c) 2010 Stefan Achatz <erazor_de@users.sourceforge.net>
- * Copyright (C) 2015 XiaoMi, Inc.
  */
 
 /*
@@ -243,6 +242,7 @@ static int roccat_release(struct inode *inode, struct file *file)
  * roccat_report_event() - output data to readers
  * @minor: minor device number returned by roccat_connect()
  * @data: pointer to data
+ * @len: size of data
  *
  * Return value is zero on success, a negative error code on failure.
  *
@@ -290,7 +290,6 @@ EXPORT_SYMBOL_GPL(roccat_report_event);
  * @class: the class thats used to create the device. Meant to hold device
  * specific sysfs attributes.
  * @hid: the hid device the char device should be connected to.
- * @report_size: size of reports
  *
  * Return value is minor device number in Range [0, ROCCAT_MAX_DEVICES] on
  * success, a negative error code on failure.
@@ -367,7 +366,7 @@ void roccat_disconnect(int minor)
 	mutex_lock(&devices_lock);
 	devices[minor] = NULL;
 	mutex_unlock(&devices_lock);
-
+	
 	if (device->open) {
 		hid_hw_close(device->hid);
 		wake_up_interruptible(&device->wait);
@@ -379,7 +378,7 @@ EXPORT_SYMBOL_GPL(roccat_disconnect);
 
 static long roccat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	struct inode *inode = file_inode(file);
+	struct inode *inode = file->f_path.dentry->d_inode;
 	struct roccat_device *device;
 	unsigned int minor = iminor(inode);
 	long retval = 0;
@@ -427,23 +426,13 @@ static int __init roccat_init(void)
 
 	if (retval < 0) {
 		pr_warn("can't get major number\n");
-		goto error;
+		return retval;
 	}
 
 	cdev_init(&roccat_cdev, &roccat_ops);
-	retval = cdev_add(&roccat_cdev, dev_id, ROCCAT_MAX_DEVICES);
+	cdev_add(&roccat_cdev, dev_id, ROCCAT_MAX_DEVICES);
 
-	if (retval < 0) {
-		pr_warn("cannot add cdev\n");
-		goto cleanup_alloc_chrdev_region;
-	}
 	return 0;
-
-
- cleanup_alloc_chrdev_region:
-	unregister_chrdev_region(dev_id, ROCCAT_MAX_DEVICES);
- error:
-	return retval;
 }
 
 static void __exit roccat_exit(void)

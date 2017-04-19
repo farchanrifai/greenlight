@@ -25,7 +25,6 @@
 #include <linux/of_address.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
-#include <linux/memory_alloc.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/sched.h>
@@ -47,6 +46,7 @@
 #include <mach/iommu.h>
 #include <mach/iommu_domains.h>
 #include <mach/msm_memtypes.h>
+#include <mach/rpm-regulator-smd.h>
 
 #include "mdp3.h"
 #include "mdss_fb.h"
@@ -958,8 +958,15 @@ static int mdp3_res_init(void)
 
 static void mdp3_res_deinit(void)
 {
+	int i;
+
 	mdp3_bus_scale_unregister();
-	mdp3_iommu_dettach(MDP3_IOMMU_CTX_DMA_0);
+
+	mutex_lock(&mdp3_res->iommu_lock);
+	for (i = 0; i < MDP3_IOMMU_CTX_MAX; i++)
+		mdp3_iommu_dettach(i);
+	mutex_unlock(&mdp3_res->iommu_lock);
+
 	mdp3_iommu_deinit();
 
 	if (!IS_ERR_OR_NULL(mdp3_res->ion_client))
@@ -1204,6 +1211,54 @@ static int mdp3_parse_dt(struct platform_device *pdev)
 	return 0;
 }
 
+void msm_mdp3_cx_ctrl(int enable)
+{
+	int rc;
+
+	if (!mdp3_res->vdd_cx) {
+		mdp3_res->vdd_cx = devm_regulator_get(&mdp3_res->pdev->dev,
+								"vdd-cx");
+		if (IS_ERR_OR_NULL(mdp3_res->vdd_cx)) {
+			pr_debug("unable to get CX reg. rc=%d\n",
+				PTR_RET(mdp3_res->vdd_cx));
+			mdp3_res->vdd_cx = NULL;
+			return;
+		}
+	}
+
+	if (enable) {
+		rc = regulator_set_voltage(
+				mdp3_res->vdd_cx,
+				RPM_REGULATOR_CORNER_SVS_SOC,
+				RPM_REGULATOR_CORNER_SUPER_TURBO);
+		if (rc < 0)
+			goto vreg_set_voltage_fail;
+
+		rc = regulator_enable(mdp3_res->vdd_cx);
+		if (rc) {
+			pr_err("Failed to enable regulator vdd_cx.\n");
+			return;
+		}
+	} else {
+		rc = regulator_disable(mdp3_res->vdd_cx);
+		if (rc) {
+			pr_err("Failed to disable regulator vdd_cx.\n");
+			return;
+		}
+		rc = regulator_set_voltage(
+				mdp3_res->vdd_cx,
+				RPM_REGULATOR_CORNER_NONE,
+				RPM_REGULATOR_CORNER_SUPER_TURBO);
+		if (rc < 0)
+			goto vreg_set_voltage_fail;
+	}
+
+	return;
+vreg_set_voltage_fail:
+	pr_err("Set vltg failed\n");
+	return;
+}
+
 void mdp3_batfet_ctrl(int enable)
 {
 	int rc;
@@ -1234,6 +1289,12 @@ void mdp3_batfet_ctrl(int enable)
 
 	if (rc < 0)
 		pr_err("%s: reg enable/disable failed", __func__);
+}
+
+void mdp3_enable_regulator(int enable)
+{
+	msm_mdp3_cx_ctrl(enable);
+	mdp3_batfet_ctrl(enable);
 }
 
 static void mdp3_iommu_heap_unmap_iommu(struct mdp3_iommu_meta *meta)
@@ -1556,7 +1617,7 @@ int mdp3_put_img(struct mdp3_img_data *data, int client)
 	int dom;
 
 	 if (data->flags & MDP_MEMORY_ID_TYPE_FB) {
-		pr_info("mdp3_put_img fb mem buf=0x%x\n", data->addr);
+		pr_info("mdp3_put_img fb mem buf=0x%pa\n", &data->addr);
 		fput_light(data->srcp_file, data->p_need);
 		data->srcp_file = NULL;
 	} else if (!IS_ERR_OR_NULL(data->srcp_ihdl)) {
@@ -1581,11 +1642,12 @@ int mdp3_get_img(struct msmfb_data *img, struct mdp3_img_data *data,
 	struct file *file;
 	int ret = -EINVAL;
 	int fb_num;
-	unsigned long *start, *len;
+	unsigned long *len;
+	dma_addr_t *start;
 	struct ion_client *iclient = mdp3_res->ion_client;
 	int dom;
 
-	start = (unsigned long *) &data->addr;
+	start = &data->addr;
 	len = (unsigned long *) &data->len;
 	data->flags = img->flags;
 	data->p_need = 0;
@@ -1645,8 +1707,8 @@ done:
 		data->addr += img->offset;
 		data->len -= img->offset;
 
-		pr_debug("mem=%d ihdl=%p buf=0x%x len=0x%x\n", img->memory_id,
-			 data->srcp_ihdl, data->addr, data->len);
+		pr_debug("mem=%d ihdl=%p buf=0x%pa len=0x%x\n", img->memory_id,
+			 data->srcp_ihdl, &data->addr, data->len);
 	} else {
 		mdp3_put_img(data, client);
 		return -EINVAL;
@@ -1659,12 +1721,14 @@ int mdp3_iommu_enable(int client)
 {
 	int rc;
 
+	mutex_lock(&mdp3_res->iommu_lock);
 	if (client == MDP3_CLIENT_DMA_P) {
 		rc = mdp3_iommu_attach(MDP3_IOMMU_CTX_DMA_0);
 	} else {
 		rc = mdp3_iommu_attach(MDP3_IOMMU_CTX_PPP_0);
 		rc |= mdp3_iommu_attach(MDP3_IOMMU_CTX_PPP_1);
 	}
+	mutex_unlock(&mdp3_res->iommu_lock);
 
 	return rc;
 }
@@ -1673,12 +1737,14 @@ int mdp3_iommu_disable(int client)
 {
 	int rc;
 
+	mutex_lock(&mdp3_res->iommu_lock);
 	if (client == MDP3_CLIENT_DMA_P) {
 		rc = mdp3_iommu_dettach(MDP3_IOMMU_CTX_DMA_0);
 	} else {
 		rc = mdp3_iommu_dettach(MDP3_IOMMU_CTX_PPP_0);
 		rc |= mdp3_iommu_dettach(MDP3_IOMMU_CTX_PPP_1);
 	}
+	mutex_unlock(&mdp3_res->iommu_lock);
 
 	return rc;
 }
@@ -1963,7 +2029,7 @@ static int mdp3_continuous_splash_on(struct mdss_panel_data *pdata)
 	else
 		mdp3_res->intf[MDP3_DMA_OUTPUT_SEL_DSI_CMD].active = 1;
 
-	mdp3_batfet_ctrl(true);
+	mdp3_enable_regulator(true);
 	mdp3_res->cont_splash_en = 1;
 	return 0;
 
@@ -2312,7 +2378,7 @@ int mdp3_panel_get_boot_cfg(void)
 
 	if (!mdp3_res || !mdp3_res->pan_cfg.init_done)
 		rc = -EPROBE_DEFER;
-	if (mdp3_res->pan_cfg.lk_cfg)
+	else if (mdp3_res->pan_cfg.lk_cfg)
 		rc = 1;
 	else
 		rc = 0;
@@ -2321,13 +2387,13 @@ int mdp3_panel_get_boot_cfg(void)
 
 static  int mdp3_suspend_sub(struct mdp3_hw_resource *mdata)
 {
-	mdp3_batfet_ctrl(false);
+	mdp3_enable_regulator(false);
 	return 0;
 }
 
 static  int mdp3_resume_sub(struct mdp3_hw_resource *mdata)
 {
-	mdp3_batfet_ctrl(true);
+	mdp3_enable_regulator(true);
 	return 0;
 }
 

@@ -2,7 +2,6 @@
  * Roccat Arvo driver for Linux
  *
  * Copyright (c) 2011 Stefan Achatz <erazor_de@users.sourceforge.net>
- * Copyright (C) 2015 XiaoMi, Inc.
  */
 
 /*
@@ -40,7 +39,7 @@ static ssize_t arvo_sysfs_show_mode_key(struct device *dev,
 	int retval;
 
 	mutex_lock(&arvo->arvo_lock);
-	retval = roccat_common2_receive(usb_dev, ARVO_COMMAND_MODE_KEY,
+	retval = roccat_common_receive(usb_dev, ARVO_COMMAND_MODE_KEY,
 			&temp_buf, sizeof(struct arvo_mode_key));
 	mutex_unlock(&arvo->arvo_lock);
 	if (retval)
@@ -68,7 +67,7 @@ static ssize_t arvo_sysfs_set_mode_key(struct device *dev,
 	temp_buf.state = state;
 
 	mutex_lock(&arvo->arvo_lock);
-	retval = roccat_common2_send(usb_dev, ARVO_COMMAND_MODE_KEY,
+	retval = roccat_common_send(usb_dev, ARVO_COMMAND_MODE_KEY,
 			&temp_buf, sizeof(struct arvo_mode_key));
 	mutex_unlock(&arvo->arvo_lock);
 	if (retval)
@@ -88,7 +87,7 @@ static ssize_t arvo_sysfs_show_key_mask(struct device *dev,
 	int retval;
 
 	mutex_lock(&arvo->arvo_lock);
-	retval = roccat_common2_receive(usb_dev, ARVO_COMMAND_KEY_MASK,
+	retval = roccat_common_receive(usb_dev, ARVO_COMMAND_KEY_MASK,
 			&temp_buf, sizeof(struct arvo_key_mask));
 	mutex_unlock(&arvo->arvo_lock);
 	if (retval)
@@ -116,7 +115,7 @@ static ssize_t arvo_sysfs_set_key_mask(struct device *dev,
 	temp_buf.key_mask = key_mask;
 
 	mutex_lock(&arvo->arvo_lock);
-	retval = roccat_common2_send(usb_dev, ARVO_COMMAND_KEY_MASK,
+	retval = roccat_common_send(usb_dev, ARVO_COMMAND_KEY_MASK,
 			&temp_buf, sizeof(struct arvo_key_mask));
 	mutex_unlock(&arvo->arvo_lock);
 	if (retval)
@@ -131,7 +130,7 @@ static int arvo_get_actual_profile(struct usb_device *usb_dev)
 	struct arvo_actual_profile temp_buf;
 	int retval;
 
-	retval = roccat_common2_receive(usb_dev, ARVO_COMMAND_ACTUAL_PROFILE,
+	retval = roccat_common_receive(usb_dev, ARVO_COMMAND_ACTUAL_PROFILE,
 			&temp_buf, sizeof(struct arvo_actual_profile));
 
 	if (retval)
@@ -171,7 +170,7 @@ static ssize_t arvo_sysfs_set_actual_profile(struct device *dev,
 	temp_buf.actual_profile = profile;
 
 	mutex_lock(&arvo->arvo_lock);
-	retval = roccat_common2_send(usb_dev, ARVO_COMMAND_ACTUAL_PROFILE,
+	retval = roccat_common_send(usb_dev, ARVO_COMMAND_ACTUAL_PROFILE,
 			&temp_buf, sizeof(struct arvo_actual_profile));
 	if (!retval) {
 		arvo->actual_profile = profile;
@@ -195,7 +194,7 @@ static ssize_t arvo_sysfs_write(struct file *fp,
 		return -EINVAL;
 
 	mutex_lock(&arvo->arvo_lock);
-	retval = roccat_common2_send(usb_dev, command, buf, real_size);
+	retval = roccat_common_send(usb_dev, command, buf, real_size);
 	mutex_unlock(&arvo->arvo_lock);
 
 	return (retval ? retval : real_size);
@@ -218,7 +217,7 @@ static ssize_t arvo_sysfs_read(struct file *fp,
 		return -EINVAL;
 
 	mutex_lock(&arvo->arvo_lock);
-	retval = roccat_common2_receive(usb_dev, command, buf, real_size);
+	retval = roccat_common_receive(usb_dev, command, buf, real_size);
 	mutex_unlock(&arvo->arvo_lock);
 
 	return (retval ? retval : real_size);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -32,7 +32,6 @@
 #include "adreno_pm4types.h"
 #include "adreno.h"
 #include "kgsl_trace.h"
-#include "z180.h"
 #include "kgsl_cffdump.h"
 
 
@@ -281,39 +280,20 @@ static void _print_entry(struct kgsl_device *device, struct _mem_entry *entry)
 static void _check_if_freed(struct kgsl_iommu_device *iommu_dev,
 	unsigned long addr, unsigned int pid)
 {
-	void *base = kgsl_driver.memfree_hist.base_hist_rb;
-	struct kgsl_memfree_hist_elem *wptr;
-	struct kgsl_memfree_hist_elem *p;
+	unsigned long gpuaddr = addr;
+	unsigned long size = 0;
+	unsigned int flags = 0;
+
 	char name[32];
 	memset(name, 0, sizeof(name));
 
-	mutex_lock(&kgsl_driver.memfree_hist_mutex);
-	wptr = kgsl_driver.memfree_hist.wptr;
-	p = wptr;
-	for (;;) {
-		if (p->size && p->pid == pid)
-			if (addr >= p->gpuaddr &&
-				addr < (p->gpuaddr + p->size)) {
-
-				kgsl_get_memory_usage(name, sizeof(name) - 1,
-					p->flags);
-				KGSL_LOG_DUMP(iommu_dev->kgsldev,
-					"---- premature free ----\n");
-				KGSL_LOG_DUMP(iommu_dev->kgsldev,
-					"[%8.8X-%8.8X] (%s) was already freed by pid %d\n",
-					p->gpuaddr,
-					p->gpuaddr + p->size,
-					name,
-					p->pid);
-			}
-		p++;
-		if ((void *)p >= base + kgsl_driver.memfree_hist.size)
-			p = (struct kgsl_memfree_hist_elem *) base;
-
-		if (p == kgsl_driver.memfree_hist.wptr)
-			break;
+	if (kgsl_memfree_find_entry(pid, &gpuaddr, &size, &flags)) {
+		kgsl_get_memory_usage(name, sizeof(name) - 1, flags);
+		KGSL_LOG_DUMP(iommu_dev->kgsldev, "---- premature free ----\n");
+		KGSL_LOG_DUMP(iommu_dev->kgsldev,
+			"[%8.8lX-%8.8lX] (%s) was already freed by pid %d\n",
+			gpuaddr, gpuaddr + size, name, pid);
 	}
-	mutex_unlock(&kgsl_driver.memfree_hist_mutex);
 }
 
 static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
@@ -491,29 +471,24 @@ static void kgsl_iommu_disable_clk(struct kgsl_mmu *mmu, int ctx_id)
 }
 
 /*
- * kgsl_iommu_disable_clk_event - An event function that is executed when
+ * kgsl_iommu_disable_clk_event() - Disable IOMMU clocks after timestamp
+ * @device: The kgsl device pointer
+ * @context: Pointer to the context that fired the event
+ * @data: Pointer to the private data for the event
+ * @type: Result of the callback (retired or cancelled)
+ *
+ * An event function that is executed when
  * the required timestamp is reached. It disables the IOMMU clocks if
  * the timestamp on which the clocks can be disabled has expired.
- * @device - The kgsl device pointer
- * @data - The data passed during event creation, it is the MMU pointer
- * @id - Context ID, should always be KGSL_MEMSTORE_GLOBAL
- * @ts - The current timestamp that has expired for the device
  *
- * Disables IOMMU clocks if timestamp has expired
  * Return - void
  */
-static void kgsl_iommu_clk_disable_event(struct kgsl_device *device, void *data,
-					unsigned int id, unsigned int ts,
-					u32 type)
+static void kgsl_iommu_clk_disable_event(struct kgsl_device *device,
+		struct kgsl_context *context, void *data, int type)
 {
 	struct kgsl_iommu_disable_clk_param *param = data;
 
-	if ((0 <= timestamp_cmp(ts, param->ts)) ||
-		(KGSL_EVENT_CANCELLED == type))
-		kgsl_iommu_disable_clk(param->mmu, param->ctx_id);
-	else
-		/* something went wrong with the event handling mechanism */
-		BUG_ON(1);
+	kgsl_iommu_disable_clk(param->mmu, param->ctx_id);
 
 	/* Free param we are done using it */
 	kfree(param);
@@ -550,8 +525,8 @@ kgsl_iommu_disable_clk_on_ts(struct kgsl_mmu *mmu,
 	param->ctx_id = ctx_id;
 	param->ts = ts;
 
-	if (kgsl_add_event(mmu->device, KGSL_MEMSTORE_GLOBAL,
-			ts, kgsl_iommu_clk_disable_event, param, mmu)) {
+	if (kgsl_add_event(mmu->device, &mmu->device->iommu_events,
+			ts, kgsl_iommu_clk_disable_event, param)) {
 		KGSL_DRV_ERR(mmu->device,
 			"Failed to add IOMMU disable clk event\n");
 		kfree(param);
@@ -648,9 +623,6 @@ static int kgsl_iommu_pt_equal(struct kgsl_mmu *mmu,
 
 	domain_ptbase = iommu_get_pt_base_addr(iommu_pt->domain)
 			& KGSL_IOMMU_CTX_TTBR0_ADDR_MASK;
-
-	/* Only compare the valid address bits of the pt_base */
-	domain_ptbase &= KGSL_IOMMU_CTX_TTBR0_ADDR_MASK;
 
 	pt_base &= KGSL_IOMMU_CTX_TTBR0_ADDR_MASK;
 
@@ -960,17 +932,6 @@ static int kgsl_iommu_init_sync_lock(struct kgsl_mmu *mmu)
 		!kgsl_mmu_is_perprocess(mmu))
 		return status;
 
-	/*
-	 * For 2D devices cpu side sync lock is required. For 3D device,
-	 * since we only have a single 3D core and we always ensure that
-	 * 3D core is idle while writing to IOMMU register using CPU this
-	 * lock is not required
-	 */
-	if (KGSL_DEVICE_2D0 == mmu->device->id ||
-		KGSL_DEVICE_2D1 == mmu->device->id) {
-		return status;
-	}
-
 	/* Return if already initialized */
 	if (iommu->sync_lock_initialized)
 		return status;
@@ -1024,7 +985,7 @@ static int kgsl_iommu_init_sync_lock(struct kgsl_mmu *mmu)
  *
  * Return - int - number of commands.
  */
-inline unsigned int kgsl_iommu_sync_lock(struct kgsl_mmu *mmu,
+static inline unsigned int kgsl_iommu_sync_lock(struct kgsl_mmu *mmu,
 						unsigned int *cmds)
 {
 	struct kgsl_device *device = mmu->device;
@@ -1094,7 +1055,7 @@ inline unsigned int kgsl_iommu_sync_lock(struct kgsl_mmu *mmu,
  *
  * Return - int - number of commands.
  */
-inline unsigned int kgsl_iommu_sync_unlock(struct kgsl_mmu *mmu,
+static inline unsigned int kgsl_iommu_sync_unlock(struct kgsl_mmu *mmu,
 					unsigned int *cmds)
 {
 	struct kgsl_device *device = mmu->device;
@@ -1931,7 +1892,7 @@ static void kgsl_iommu_stop(struct kgsl_mmu *mmu)
 		kgsl_iommu_pagefault_resume(mmu);
 	}
 	/* switch off MMU clocks and cancel any events it has queued */
-	kgsl_cancel_events(mmu->device, mmu);
+	kgsl_cancel_events(mmu->device, &mmu->device->iommu_events);
 }
 
 static int kgsl_iommu_close(struct kgsl_mmu *mmu)

@@ -578,7 +578,6 @@ static int mma8x5x_enable_set(struct sensors_classdev *sensors_cdev,
 				dev_err(&client->dev, "change device state failed!");
 				goto err_failed;
 			}
-
 			if (!pdata->use_int)
 				schedule_delayed_work(&pdata->dwork,
 					msecs_to_jiffies(pdata->poll_delay));

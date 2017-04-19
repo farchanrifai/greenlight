@@ -46,7 +46,7 @@ static u32 get_tz_usage(struct smem_client *client, enum hal_buffer buffer_type)
 
 static int get_device_address(struct smem_client *smem_client,
 		struct ion_handle *hndl, unsigned long align,
-		unsigned long *iova, unsigned long *buffer_size,
+		dma_addr_t *iova, unsigned long *buffer_size,
 		u32 flags, enum hal_buffer buffer_type)
 {
 	int rc = 0;
@@ -135,7 +135,7 @@ static int ion_user_to_kernel(struct smem_client *client, int fd, u32 offset,
 		struct msm_smem *mem, enum hal_buffer buffer_type)
 {
 	struct ion_handle *hndl;
-	unsigned long iova = 0;
+	dma_addr_t iova = 0;
 	unsigned long buffer_size = 0;
 	unsigned long ionflags = 0;
 	int rc = 0;
@@ -187,7 +187,7 @@ static int alloc_ion_mem(struct smem_client *client, size_t size, u32 align,
 	int map_kernel)
 {
 	struct ion_handle *hndl;
-	unsigned long iova = 0;
+	dma_addr_t iova = 0;
 	unsigned long buffer_size = 0;
 	unsigned long heap_mask = 0;
 	int rc = 0;
@@ -226,7 +226,7 @@ static int alloc_ion_mem(struct smem_client *client, size_t size, u32 align,
 	mem->buffer_type = buffer_type;
 	if (map_kernel) {
 		mem->kvaddr = ion_map_kernel(client->clnt, hndl);
-		if (!mem->kvaddr) {
+		if (IS_ERR(mem->kvaddr) || !mem->kvaddr) {
 			dprintk(VIDC_ERR,
 				"Failed to map shared mem in kernel\n");
 			rc = -EIO;
@@ -325,6 +325,16 @@ struct msm_smem *msm_smem_user_to_kernel(void *clt, int fd, u32 offset,
 		mem = NULL;
 	}
 	return mem;
+}
+
+bool msm_smem_compare_buffers(void *clt, int fd, void *priv) {
+	struct smem_client *client = clt;
+	struct ion_handle *handle = NULL;
+	bool ret = false;
+	handle = ion_import_dma_buf(client->clnt, fd);
+	ret = handle == priv;
+	handle ? ion_free(client->clnt, handle) : 0;
+	return ret;
 }
 
 static int ion_cache_operations(struct smem_client *client,

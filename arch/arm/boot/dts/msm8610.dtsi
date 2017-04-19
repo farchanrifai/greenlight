@@ -19,7 +19,7 @@
 
 	memory {
 		qsecom_mem: qsecom_region {
-			linux,contiguous-region;
+			linux,reserve-contiguous-region;
 			reg = <0 0x100000>;
 			label = "qsecom_mem";
 		};
@@ -470,14 +470,25 @@
 
 	qcom,clock-a7@f9011050 {
 		compatible = "qcom,clock-a7-8226";
-		reg = <0xf9011050 0x8>;
-		reg-names = "rcg-base";
+		reg = <0xf9011050 0x8>,
+		      <0xfc4b80b8 0x8>;
+		reg-names = "rcg-base", "efuse";
 		clock-names = "clk-4", "clk-5";
 		qcom,speed0-bin-v0 =
 			<         0 0>,
 			< 384000000 1>,
 			< 787200000 2>,
 			<1190400000 3>;
+		qcom,speed1-bin-v0 =
+			<         0 0>,
+			< 384000000 1>,
+			< 787200000 2>,
+			<1094400000 3>;
+		qcom,speed1-bin-v2 =
+			<         0 0>,
+			< 384000000 1>,
+			< 787200000 2>,
+			<1094400000 3>;
 
 		cpu-vdd-supply = <&apc_vreg_corner>;
 	};
@@ -690,13 +701,6 @@
 		qcom,latency-level = "ultra";
 	};
 
-	qcom,msm-pcm-ultra-low {
-		compatible = "qcom,msm-pcm-dsp";
-		qcom,msm-pcm-dsp-id = <2>;
-		qcom,msm-pcm-low-latency;
-		qcom,latency-level = "ultra";
-	};
-
 	qcom,msm-pcm-routing {
 		compatible = "qcom,msm-pcm-routing";
 	};
@@ -746,13 +750,6 @@
 			compatible = "qcom,msm-dai-q6-mi2s";
 			qcom,msm-dai-q6-mi2s-dev-id = <1>;
 			qcom,msm-mi2s-rx-lines = <3>;
-			qcom,msm-mi2s-tx-lines = <0>;
-		};
-
-		qcom,msm-dai-q6-mi2s-sec-sd1 {
-			compatible = "qcom,msm-dai-q6-mi2s";
-			qcom,msm-dai-q6-mi2s-dev-id = <4>;
-			qcom,msm-mi2s-rx-lines = <2>;
 			qcom,msm-mi2s-tx-lines = <0>;
 		};
 	};
@@ -833,7 +830,7 @@
 		interrupt-names = "wcnss_wlantx_irq", "wcnss_wlanrx_irq";
 
 		qcom,pronto-vddmx-supply = <&pm8110_l3>;
-		qcom,pronto-vddcx-supply = <&pm8110_s1>;
+		qcom,pronto-vddcx-supply = <&pm8110_s1_corner>;
 		qcom,pronto-vddpx-supply = <&pm8110_l6>;
 		qcom,iris-vddxo-supply = <&pm8110_l10>;
 		qcom,iris-vddrfa-supply = <&pm8110_l5>;
@@ -921,6 +918,9 @@
 		qcom,hotplug-temp-hysteresis = <20>;
 		qcom,cpu-sensors = "tsens_tz_sensor5", "tsens_tz_sensor5",
 				"tsens_tz_sensor5", "tsens_tz_sensor5";
+		qcom,default-temp = <80>;
+		qcom,efuse-data = <0xfc4b8000 0x1000 23 30 0x3>;
+		qcom,efuse-temperature-map = <0x1 70>;
 		qcom,vdd-restriction-temp = <5>;
 		qcom,vdd-restriction-temp-hysteresis = <10>;
 		vdd-dig-supply = <&pm8110_s1_floor_corner>;
@@ -983,8 +983,7 @@
 
 	qcom,msm-rtb {
 		compatible = "qcom,msm-rtb";
-		qcom,memory-reservation-type = "EBI1";
-		qcom,memory-reservation-size = <0x100000>; /* 1M EBI1 buffer */
+		qcom,msm-rtb = <0x100000>; /* 1M EBI1 buffer */
 	};
 
 	jtag_fuse: jtagfuse@fc4be024 {
@@ -1034,6 +1033,7 @@
 		interrupts = <0 207 0>;
 		qcom,bam-pipe-pair = <2>;
 		qcom,ce-hw-instance = <1>;
+		qcom,ce-device = <0>;
 		qcom,ce-hw-shared;
 		qcom,msm-bus,name = "qcrypto-noc";
 		qcom,msm-bus,num-cases = <2>;
@@ -1052,6 +1052,7 @@
 		interrupts = <0 207 0>;
 		qcom,bam-pipe-pair = <1>;
 		qcom,ce-hw-instance = <1>;
+		qcom,ce-device = <0>;
 		qcom,ce-hw-shared;
 		qcom,msm-bus,name = "qcedev-noc";
 		qcom,msm-bus,num-cases = <2>;
@@ -1066,6 +1067,12 @@
 		compatible = "arm,cortex-a7-pmu";
 		qcom,irq-is-percpu;
 		interrupts = <1 7 0xf00>;
+	};
+
+	bimc_sharedmem {
+		compatible = "qcom,sharedmem-uio";
+		reg = <0xfc380000 0x00100000>;
+		reg-names = "bimc";
 	};
 };
 

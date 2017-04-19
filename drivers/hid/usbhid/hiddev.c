@@ -1,7 +1,6 @@
 /*
  *  Copyright (c) 2001 Paul Stewart
  *  Copyright (c) 2001 Vojtech Pavlik
- *  Copyright (C) 2015 XiaoMi, Inc.
  *
  *  HID char devices, giving access to raw HID device events.
  *
@@ -35,7 +34,6 @@
 #include <linux/hid.h>
 #include <linux/hiddev.h>
 #include <linux/compat.h>
-#include <linux/vmalloc.h>
 #include "usbhid.h"
 
 #ifdef CONFIG_USB_DYNAMIC_MINORS
@@ -252,13 +250,13 @@ static int hiddev_release(struct inode * inode, struct file * file)
 		} else {
 			mutex_unlock(&list->hiddev->existancelock);
 			kfree(list->hiddev);
-			vfree(list);
+			kfree(list);
 			return 0;
 		}
 	}
 
 	mutex_unlock(&list->hiddev->existancelock);
-	vfree(list);
+	kfree(list);
 
 	return 0;
 }
@@ -280,7 +278,7 @@ static int hiddev_open(struct inode *inode, struct file *file)
 	hid = usb_get_intfdata(intf);
 	hiddev = hid->hiddev;
 
-	if (!(list = vzalloc(sizeof(struct hiddev_list))))
+	if (!(list = kzalloc(sizeof(struct hiddev_list), GFP_KERNEL)))
 		return -ENOMEM;
 	mutex_init(&list->thread_lock);
 	list->hiddev = hiddev;
@@ -324,7 +322,7 @@ bail_unlock:
 	mutex_unlock(&hiddev->existancelock);
 bail:
 	file->private_data = NULL;
-	vfree(list);
+	kfree(list);
 	return res;
 }
 
@@ -362,16 +360,16 @@ static ssize_t hiddev_read(struct file * file, char __user * buffer, size_t coun
 			prepare_to_wait(&list->hiddev->wait, &wait, TASK_INTERRUPTIBLE);
 
 			while (list->head == list->tail) {
+				if (file->f_flags & O_NONBLOCK) {
+					retval = -EAGAIN;
+					break;
+				}
 				if (signal_pending(current)) {
 					retval = -ERESTARTSYS;
 					break;
 				}
 				if (!list->hiddev->exist) {
 					retval = -EIO;
-					break;
-				}
-				if (file->f_flags & O_NONBLOCK) {
-					retval = -EAGAIN;
 					break;
 				}
 
@@ -517,12 +515,12 @@ static noinline int hiddev_ioctl_usage(struct hiddev *hiddev, unsigned int cmd, 
 					goto inval;
 			} else if (uref->usage_index >= field->report_count)
 				goto inval;
-		}
 
-		if ((cmd == HIDIOCGUSAGES || cmd == HIDIOCSUSAGES) &&
-		    (uref_multi->num_values > HID_MAX_MULTI_USAGES ||
-		     uref->usage_index + uref_multi->num_values > field->report_count))
-			goto inval;
+			else if ((cmd == HIDIOCGUSAGES || cmd == HIDIOCSUSAGES) &&
+				 (uref_multi->num_values > HID_MAX_MULTI_USAGES ||
+				  uref->usage_index + uref_multi->num_values > field->report_count))
+				goto inval;
+		}
 
 		switch (cmd) {
 		case HIDIOCGUSAGE:
@@ -626,7 +624,7 @@ static long hiddev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 
 	case HIDIOCAPPLICATION:
-		if (arg >= hid->maxapplication)
+		if (arg < 0 || arg >= hid->maxapplication)
 			break;
 
 		for (i = 0; i < hid->maxcollection; i++)
@@ -706,8 +704,8 @@ static long hiddev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if (report == NULL)
 			break;
 
-		hid_hw_request(hid, report, HID_REQ_GET_REPORT);
-		hid_hw_wait(hid);
+		usbhid_submit_report(hid, report, USB_DIR_IN);
+		usbhid_wait_io(hid);
 
 		r = 0;
 		break;
@@ -725,8 +723,8 @@ static long hiddev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if (report == NULL)
 			break;
 
-		hid_hw_request(hid, report, HID_REQ_SET_REPORT);
-		hid_hw_wait(hid);
+		usbhid_submit_report(hid, report, USB_DIR_OUT);
+		usbhid_wait_io(hid);
 
 		r = 0;
 		break;

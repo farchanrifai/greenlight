@@ -26,22 +26,36 @@
 
 	memory {
 		secure_mem: secure_region {
-			linux,contiguous-region;
+			linux,reserve-contiguous-region;
 			reg = <0 0x6D00000>;
 			label = "secure_mem";
 		};
 
 		adsp_mem: adsp_region {
-			linux,contiguous-region;
+			linux,reserve-contiguous-region;
+			linux,memory-limit = <0x0>;
 			reg = <0 0x2a00000>;
 			label = "adsp_mem";
 		};
 
 		qsecom_mem: qsecom_region {
-			linux,contiguous-region;
+			linux,reserve-contiguous-region;
 			reg = <0 0xd00000>;
 			label = "qsecom_mem";
 		};
+
+		fb_mem: fb_region {
+			linux,reserve-contiguous-region;
+			reg = <0 0x800000>;
+			label = "fb_mem";
+		};
+
+		audio_mem: audio_region {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			reg = <0 0x314000>;
+			label = "audio_mem";
+	       };
 	};
 
 	soc: soc { };
@@ -496,8 +510,8 @@
 		compatible = "qcom,msm-lsm-client";
 	};
 
-	qcom,msm-pcm-loopback {
-		compatible = "qcom,msm-pcm-loopback";
+	qti,msm-pcm-loopback {
+		compatible = "qti,msm-pcm-loopback";
 	};
 
 	qcom,msm-voice-svc {
@@ -628,6 +642,13 @@
 		qcom,msm-auxpcm-interface = "primary";
 	};
 
+	qcom,avtimer@fe053000 {
+		compatible = "qcom,avtimer";
+		reg = <0xfe053008 0x4>,
+			<0xfe05300c 0x4>;
+		reg-names = "avtimer_lsb_addr", "avtimer_msb_addr";
+	};
+
 	qcom,wcnss-wlan@fb000000 {
 		compatible = "qcom,wcnss_wlan";
 		reg = <0xfb000000 0x280000>,
@@ -637,7 +658,7 @@
 		interrupt-names = "wcnss_wlantx_irq", "wcnss_wlanrx_irq";
 
 		qcom,pronto-vddmx-supply = <&pm8226_l3>;
-		qcom,pronto-vddcx-supply = <&pm8226_s1>;
+		qcom,pronto-vddcx-supply = <&pm8226_s1_corner>;
 		qcom,pronto-vddpx-supply = <&pm8226_l6>;
 		qcom,iris-vddxo-supply = <&pm8226_l10>;
 		qcom,iris-vddrfa-supply = <&pm8226_l24>;
@@ -1262,12 +1283,6 @@
 		qcom,master-id = <86>;
 	};
 
-	qcom,msm-thermal-simple {
- 		compatible = "qcom,msm-thermal-simple";
- 		qcom,thermal-vadc = <&pm8941_vadc>;
- 		qcom,adc-channel = <178>;
- 	};
-
 	qcom,bam_dmux@fc834000 {
 		compatible = "qcom,bam_dmux";
 		reg = <0xfc834000 0x7000>;
@@ -1276,8 +1291,7 @@
 
 	qcom,msm-rtb {
 		compatible = "qcom,msm-rtb";
-		qcom,memory-reservation-type = "EBI1";
-		qcom,memory-reservation-size = <0x100000>; /* 1M EBI1 buffer */
+		qcom,rtb-size = <0x100000>; /* 1M EBI1 buffer */
 	};
 
 	qcom,msm-rng@f9bff000 {
@@ -1349,6 +1363,7 @@
 		qcom,msm-bus,num-cases = <4>;
 		qcom,msm-bus,active-only = <0>;
 		qcom,msm-bus,num-paths = <1>;
+		qcom,support-fde;
 		qcom,msm-bus,vectors-KBps =
 				<55 512 0 0>,
 				<55 512 0 0>,
@@ -1364,6 +1379,7 @@
 		interrupts = <0 207 0>;
 		qcom,bam-pipe-pair = <2>;
 		qcom,ce-hw-instance = <0>;
+		qcom,ce-device = <0>;
 		qcom,ce-hw-shared;
 		qcom,msm-bus,name = "qcrypto-noc";
 		qcom,msm-bus,num-cases = <2>;
@@ -1382,6 +1398,7 @@
 		interrupts = <0 207 0>;
 		qcom,bam-pipe-pair = <1>;
 		qcom,ce-hw-instance = <0>;
+		qcom,ce-device = <0>;
 		qcom,ce-hw-shared;
 		qcom,msm-bus,name = "qcedev-noc";
 		qcom,msm-bus,num-cases = <2>;
@@ -1396,6 +1413,12 @@
 		compatible = "arm,cortex-a7-pmu";
 		qcom,irq-is-percpu;
 		interrupts = <1 7 0xf00>;
+	};
+
+	bimc_sharedmem {
+		compatible = "qcom,sharedmem-uio";
+		reg = <0xfc380000 0x00100000>;
+		reg-names = "bimc";
 	};
 };
 

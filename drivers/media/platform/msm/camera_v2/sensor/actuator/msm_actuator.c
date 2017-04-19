@@ -1,5 +1,4 @@
 /* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
- * Copyright (C) 2015 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -54,7 +53,7 @@ static struct msm_actuator *actuators[] = {
  * convert gsensor z to actuator dac offset
  */
 int16_t x5_sag_dac_H2D = 80; /* module pos diff */
-extern int16_t g_hid_accl_z;
+int16_t g_hid_accl_z;
 
 int16_t cal_x5_vcm_offset(int16_t z) {
 

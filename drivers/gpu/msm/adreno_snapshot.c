@@ -16,7 +16,6 @@
 
 #include "adreno.h"
 #include "adreno_pm4types.h"
-#include "a2xx_reg.h"
 #include "a3xx_reg.h"
 
 /* Number of dwords of ringbuffer history to record */
@@ -599,11 +598,8 @@ static int ib_add_gpu_object(struct kgsl_device *device, phys_addr_t ptbase,
 				unsigned int gpuaddr = src[i + 1];
 				unsigned int size = src[i + 2];
 
-				ret = parse_ib(device, ptbase, gpuaddr, size);
+				parse_ib(device, ptbase, gpuaddr, size);
 
-				/* If adding the IB failed then stop parsing */
-				if (ret < 0)
-					goto done;
 			} else {
 				ret = ib_parse_type3(device, &src[i], ptbase);
 				/*
@@ -797,23 +793,13 @@ static int snapshot_rb(struct kgsl_device *device, void *snapshot,
 		if (parse_ibs && adreno_cmd_is_ib(rbptr[index])) {
 			unsigned int ibaddr = rbptr[index + 1];
 			unsigned int ibsize = rbptr[index + 2];
-
-			/*
-			 * This will return non NULL if the IB happens to be
-			 * part of the context memory (i.e - context switch
-			 * command buffers)
-			 */
-
-			struct kgsl_memdesc *memdesc =
-				adreno_find_ctxtmem(device, ptbase, ibaddr,
-					ibsize << 2);
+			struct kgsl_memdesc *memdesc = NULL;
 
 			/* IOMMU uses a NOP IB placed in setsate memory */
-			if (NULL == memdesc)
-				if (kgsl_gpuaddr_in_memdesc(
-						&device->mmu.setstate_memory,
-						ibaddr, ibsize << 2))
-					memdesc = &device->mmu.setstate_memory;
+			if (kgsl_gpuaddr_in_memdesc(
+					&device->mmu.setstate_memory,
+					ibaddr, ibsize << 2))
+				memdesc = &device->mmu.setstate_memory;
 			/*
 			 * The IB from CP_IB1_BASE and the IBs for legacy
 			 * context switch go into the snapshot all
@@ -929,15 +915,16 @@ static int snapshot_ib(struct kgsl_device *device, void *snapshot,
 			if ((obj->dwords - i) < type3_pkt_size(*src) + 1)
 				continue;
 
-			if (adreno_cmd_is_ib(*src))
-				ret = parse_ib(device, obj->ptbase, src[1],
+			if (adreno_cmd_is_ib(*src)) {
+				parse_ib(device, obj->ptbase, src[1],
 					src[2]);
-			else
+			} else {
 				ret = ib_parse_type3(device, src, obj->ptbase);
 
-			/* Stop parsing if the type3 decode fails */
-			if (ret < 0)
-				break;
+				/* Stop parsing if the type3 decode fails */
+				if (ret < 0)
+					break;
+			}
 		}
 	}
 

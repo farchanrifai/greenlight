@@ -74,7 +74,7 @@ static void *emergency_dload_mode_addr;
 
 /* Download mode master kill-switch */
 static int dload_set(const char *val, struct kernel_param *kp);
-static int download_mode = 1;
+static int download_mode = 0;
 module_param_call(download_mode, dload_set, param_get_int,
 			&download_mode, 0644);
 static int panic_prep_restart(struct notifier_block *this,
@@ -256,11 +256,7 @@ static void msm_restart_prepare(const char *cmd)
 	set_dload_mode(0);
 
 	/* Write download mode flags if we're panic'ing */
-
-	/* ## We don't want to panic into dload mode ##
-	 * change in set_dload_mode(in_panic) to re-enable it
-	 */
-	set_dload_mode(0);
+	set_dload_mode(in_panic);
 
 	/* Write download mode flags if restart_mode says so */
 	if (restart_mode == RESTART_DLOAD)
@@ -272,12 +268,15 @@ static void msm_restart_prepare(const char *cmd)
 #endif
 
 	pm8xxx_reset_pwr_off(1);
-
+#if 0
 	/* Hard reset the PMIC unless memory contents must be maintained. */
-	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0'))
+	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0') || in_panic)
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 	else
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
+#else
+	qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+#endif
 
 	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
@@ -292,9 +291,6 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x6f656d00 | code, restart_reason);
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
-		} else if (!strcmp(cmd, "dload")) {
-			set_dload_mode(1);
-			__raw_writel(0x77665501, restart_reason);
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}

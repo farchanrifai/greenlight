@@ -48,46 +48,137 @@
 			device_type = "cpu";
 			compatible = "qcom,krait";
 			reg = <0x0>;
+			// The currents(uA) correspond to the frequencies in the
+			// frequency table.
+			current = < 57900 //300000 kHz
+			            88200 //422400 kHz
+			            99600 //652800 kHz
+			            138800 //729600 kHz
+			            149600 //883200 kHz
+			            170200 //960000 kHz
+			            178300 //1036800 kHz
+			            189100 //1190400 kHz
+			            232100 //1267200 kHz
+			            256500 //1497600 kHz
+			            266400 //1574000 kHz
+			            287700 //1728000 kHz
+			            325700 //1958400 kHz
+			            386200>; //2265600 kHz
 		};
 
 		CPU1: cpu@1 {
 			device_type = "cpu";
 			compatible = "qcom,krait";
 			reg = <0x1>;
+			// The currents(uA) correspond to the frequencies in the
+			// frequency table.
+			current = < 23739 //300000 kHz
+			            36162 //422400 kHz
+			            40836 //652800 kHz
+			            56908 //729600 kHz
+			            61335 //883200 kHz
+			            69782 //960000 kHz
+			            73103 //1036800 kHz
+			            77531 //1190400 kHz
+			            95161 //1267200 kHz
+			            105165 //1497600 kHz
+			            109224 //1574000 kHz
+			            117957 //1728000 kHz
+			            133537 //1958400 kHz
+			            158342>; //2265600 kHz
 		};
 
 		CPU2: cpu@2 {
 			device_type = "cpu";
 			compatible = "qcom,krait";
 			reg = <0x2>;
+			// The currents(uA) correspond to the frequencies in the
+			// frequency table.
+			current = < 27213 //300000 kHz
+			            41454 //422400 kHz
+			            46812 //652800 kHz
+			            65235 //729600 kHz
+			            70312 //883200 kHz
+			            79994 //960000 kHz
+			            83801 //1036800 kHz
+			            88877 //1190400 kHz
+			            109087 //1267200 kHz
+			            120555 //1497600 kHz
+			            125208 //1574000 kHz
+			            135219 //1728000 kHz
+			            153079 //1958400 kHz
+			            181514>; //2265600 kHz
 		};
 
 		CPU3: cpu@3 {
 			device_type = "cpu";
 			compatible = "qcom,krait";
 			reg = <0x3>;
+			// The currents(uA) correspond to the frequencies in the
+			// frequency table.
+			current = < 31266 //300000 kHz
+			            47628 //422400 kHz
+			            53784 //652800 kHz
+			            74952 //729600 kHz
+			            80784 //883200 kHz
+			            91908 //960000 kHz
+			            96282 //1036800 kHz
+			            102114 //1190400 kHz
+			            125334 //1267200 kHz
+			            138510 //1497600 kHz
+			            143856 //1574000 kHz
+			            155358 //1728000 kHz
+			            175878 //1958400 kHz
+			            208548>; //2265600 kHz
 		};
 	};
 
 	memory {
 		secure_mem: secure_region {
-			linux,contiguous-region;
+			linux,reserve-contiguous-region;
 			reg = <0 0xFC00000>;
 			label = "secure_mem";
 		};
 
 		adsp_mem: adsp_region {
-			linux,contiguous-region;
-			reg = <0 0x3F00000>;
+			linux,reserve-contiguous-region;
+			reg = <0 0x4100000>;
 			label = "adsp_mem";
 		};
 
 		qsecom_mem: qsecom_region {
-			linux,contiguous-region;
+			linux,reserve-contiguous-region;
 			reg = <0 0x1100000>;
 			label = "qseecom_mem";
 		};
 
+		fb_mem: fb_region {
+			linux,reserve-reserve-contiguous-region;
+			reg = <0 0x800000>;
+			label = "fb_mem";
+		};
+
+		audio_mem: audio_region {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			reg = <0 0x614000>;
+			label = "audio_mem";
+		};
+
+		peripheral_mem: peripheral_region@5d00000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x5d00000 0x7d00000>;
+			label = "peripheral_mem";
+		};
+
+		external_image_mem: external_image_region@fa00000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0xfa00000 0x500000>;
+		};
 	};
 
 	soc: soc { };
@@ -1597,6 +1688,7 @@
 		compatible = "qcom,kraitbw-l2pm";
 		interrupts = <0 1 1>;
 		qcom,bytes-per-beat = <8>;
+		qcom,target-dev = <&cache>;
 	};
 
 	devfreq-cpufreq {
@@ -2044,7 +2136,7 @@
 		interrupt-names = "wcnss_wlantx_irq", "wcnss_wlanrx_irq";
 
 		qcom,pronto-vddmx-supply = <&pm8841_s1>;
-		qcom,pronto-vddcx-supply = <&pm8841_s2>;
+		qcom,pronto-vddcx-supply = <&pm8841_s2_corner>;
 		qcom,pronto-vddpx-supply = <&pm8941_s3>;
 		qcom,iris-vddxo-supply = <&pm8941_l6>;
 		qcom,iris-vddrfa-supply = <&pm8941_l11>;
@@ -2054,6 +2146,7 @@
 		gpios = <&msmgpio 36 0>, <&msmgpio 37 0>, <&msmgpio 38 0>, <&msmgpio 39 0>, <&msmgpio 40 0>;
 		qcom,has-48mhz-xo;
 		qcom,has-pronto-hw;
+		qcom,wcnss-pm = <11 19 1200 1 1 6>;
 	};
 
 	qcom,ocmem@fdd00000 {
@@ -2114,12 +2207,15 @@
 		reg = <0x7b00000 0x500000>;
 		reg-names = "secapp-region";
 		qcom,disk-encrypt-pipe-pair = <2>;
+		qcom,file-encrypt-pipe-pair = <0>;
 		qcom,hlos-ce-hw-instance = <1>;
 		qcom,qsee-ce-hw-instance = <0>;
 		qcom,support-bus-scaling;
 		qcom,msm-bus,name = "qseecom-noc";
 		qcom,msm-bus,num-cases = <4>;
 		qcom,msm-bus,num-paths = <1>;
+		qcom,support-fde;
+		qcom,support-pfe;
 		qcom,msm-bus,vectors-KBps =
 				<55 512 0 0>,
 				<55 512 0 0>,
@@ -2203,8 +2299,7 @@
 
 	qcom,msm-rtb {
 		compatible = "qcom,msm-rtb";
-		qcom,memory-reservation-type = "EBI1";
-		qcom,memory-reservation-size = <0x100000>; /* 1M EBI1 buffer */
+		qcom,rtb-size = <0x100000>; /* 1M EBI1 buffer */
 	};
 
 	qcom,msm-contig-mem {
@@ -2213,14 +2308,15 @@
 		qcom,memory-reservation-size = <0x280000>; /* 2.5M EBI1 buffer */
 	};
 
-	qcom_cedev: qcedev@fd440000 {
+        qcom,qcedev@fd440000 {
 		compatible = "qcom,qcedev";
 		reg = <0xfd440000 0x20000>,
-		      <0xfd444000 0x8000>;
+		      <0xfd444000 0x1b000>;
 		reg-names = "crypto-base","crypto-bam-base";
 		interrupts = <0 236 0>;
 		qcom,bam-pipe-pair = <1>;
 		qcom,ce-hw-instance = <1>;
+		qcom,ce-device = <0>;
                 qcom,msm-bus,name = "qcedev-noc";
 		qcom,msm-bus,num-cases = <2>;
 		qcom,msm-bus,num-paths = <1>;
@@ -2229,14 +2325,15 @@
 				<56 512 3936000 393600>;
 	};
 
-	qcom_crypto: qcrypto@fd440000 {
+        qcom,qcrypto@fd440000 {
 		compatible = "qcom,qcrypto";
 		reg = <0xfd440000 0x20000>,
-		      <0xfd444000 0x8000>;
+		      <0xfd444000 0x1b000>;
 		reg-names = "crypto-base","crypto-bam-base";
 		interrupts = <0 236 0>;
 		qcom,bam-pipe-pair = <2>;
 		qcom,ce-hw-instance = <1>;
+		qcom,ce-device = <0>;
 		qcom,clk-mgmt-sus-res;
                 qcom,msm-bus,name = "qcrypto-noc";
 		qcom,msm-bus,num-cases = <2>;
@@ -2248,7 +2345,8 @@
 				<56 512 0 0>,
 				<56 512 3936000 393600>;
 	};
-	qcom_crypto1: qcrypto1@fd440000 {
+
+        qcom,qcrypto1@fd440000 {
 		compatible = "qcom,qcrypto";
 		reg = <0xfd440000 0x20000>,
 		      <0xfd444000 0x1b000>;
@@ -2268,6 +2366,7 @@
 				<56 512 0 0>,
 				<56 512 3936000 393600>;
 	};
+
 	qcom,usbbam@f9304000 {
 		compatible = "qcom,usb-bam-msm";
 		reg = <0xf9304000 0x5000>,
@@ -2364,25 +2463,17 @@
 		};
 	};
 
-	qcom,msm-thermal-simple {
-		compatible = "qcom,msm-thermal-simple";
-		qcom,thermal-vadc = <&pm8941_vadc>;
-		qcom,adc-channel = <178>;
-	};
-
 	qcom,bam_dmux@fc834000 {
 		compatible = "qcom,bam_dmux";
 		reg = <0xfc834000 0x7000>;
 		interrupts = <0 29 1>;
 		qcom,rx-ring-size = <64>;
-                qcom,fast-shutdown;
 	};
 
-        memory_hole: qcom,msm-mem-hole {
-                compatible = "qcom,msm-mem-hole";
-                qcom,memblock-remove = <0x5d00000 0x7d00000
-					0xfa00000 0x500000>; /* Address and Size of Hole */
-        };
+	ram_console {
+		compatible = "ram_console";
+		bootinfo = <0>;
+	};
 
 	uart7: uart@f995d000 { /*BLSP #2, UART #7 */
 		compatible = "qcom,msm-hsuart-v14";
@@ -2528,6 +2619,12 @@
 	l2-pmu {
 		compatible = "qcom,l2-pmu";
 		interrupts = <0 1 0>;
+	};
+
+	bimc_sharedmem {
+		compatible = "qcom,sharedmem-uio";
+		reg = <0xfc380000 0x00100000>;
+		reg-names = "bimc";
 	};
 
 	qcom,smdtty {
