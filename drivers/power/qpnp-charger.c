@@ -853,8 +853,6 @@ qpnp_chg_idcmax_set(struct qpnp_chg_chip *chip, int mA)
 			chip->dc_chgpth_base + CHGR_I_MAX_REG, 1);
 	}
 
-	dc = mA / QPNP_CHG_I_MAXSTEP_MA;
-
 	pr_debug("current=%d setting 0x%x\n", mA, dc);
 	rc = qpnp_chg_write(chip, &dc,
 		chip->dc_chgpth_base + CHGR_I_MAX_REG, 1);
@@ -930,9 +928,6 @@ qpnp_chg_iusbmax_set(struct qpnp_chg_chip *chip, int mA)
 	}
 
 	/* Impose input current limit */
-	if (chip->maxinput_usb_ma)
-		mA = (chip->maxinput_usb_ma) <= mA ? chip->maxinput_usb_ma : mA;
-
 	usb_reg = mA / QPNP_CHG_I_MAXSTEP_MA;
 
 	if (chip->flags & CHG_FLAGS_VCP_WA) {
