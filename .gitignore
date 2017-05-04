@@ -74,7 +74,6 @@ patches-*
 # quilt's files
 patches
 series
-gas.sh
 build.log
 xmlog
 
